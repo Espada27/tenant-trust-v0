@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract StakingRewards is Ownable {
-    IERC20 public stakingToken; //TODO set immutable
-    IERC20 public rewardsToken; //TODO set immutable
+contract Staking is Ownable {
+    using SafeERC20 for IERC20;
+
+    IERC20 public immutable stakingToken;
+    IERC20 public immutable rewardToken;
 
     // Duration of rewards to be paid out (in seconds)
     uint public duration;
@@ -25,6 +27,7 @@ contract StakingRewards is Ownable {
 
     // Total staked
     uint public totalSupply;
+    uint public targetSupply;
     // User address => staked amount
     mapping(address => uint) public balanceOf;
 
@@ -36,10 +39,12 @@ contract StakingRewards is Ownable {
 
     constructor(
         address _stakingToken,
-        address _rewardToken
+        address _rewardToken,
+        uint _targetSupply
     ) Ownable(msg.sender) {
-        stakingToken = IERC20(_stakingToken); // USDC contract
-        rewardsToken = IERC20(_rewardToken); // TTT contract
+        stakingToken = IERC20(_stakingToken);
+        rewardToken = IERC20(_rewardToken);
+        targetSupply = _targetSupply;
     }
 
     modifier updateReward(address _account) {
@@ -71,7 +76,8 @@ contract StakingRewards is Ownable {
 
     function stake(uint _amount) external updateReward(msg.sender) {
         require(_amount > 0, "amount = 0");
-        stakingToken.transferFrom(msg.sender, address(this), _amount);
+        require(totalSupply + _amount <= targetSupply, "cannot stake more");
+        stakingToken.safeTransferFrom(msg.sender, address(this), _amount);
         balanceOf[msg.sender] += _amount;
         totalSupply += _amount;
         emit Staked(msg.sender, _amount);
@@ -79,9 +85,13 @@ contract StakingRewards is Ownable {
 
     function withdraw(uint _amount) external updateReward(msg.sender) {
         require(_amount > 0, "amount = 0");
+        require(
+            finishAt == 0 || block.timestamp >= finishAt,
+            "cannot withdraw yet"
+        );
         balanceOf[msg.sender] -= _amount;
         totalSupply -= _amount;
-        stakingToken.transfer(msg.sender, _amount);
+        stakingToken.safeTransfer(msg.sender, _amount);
         emit Withdrawn(msg.sender, _amount);
     }
 
@@ -96,7 +106,7 @@ contract StakingRewards is Ownable {
         uint reward = rewards[msg.sender];
         if (reward > 0) {
             rewards[msg.sender] = 0;
-            rewardsToken.transfer(msg.sender, reward);
+            rewardToken.safeTransfer(msg.sender, reward);
             emit RewardPaid(msg.sender, reward);
         }
     }
@@ -113,6 +123,7 @@ contract StakingRewards is Ownable {
     function notifyRewardAmount(
         uint _amount
     ) external onlyOwner updateReward(address(0)) {
+        require(totalSupply >= targetSupply, "insuficient staking");
         if (block.timestamp >= finishAt) {
             rewardRate = _amount / duration;
         } else {
@@ -122,7 +133,7 @@ contract StakingRewards is Ownable {
 
         require(rewardRate > 0, "reward rate = 0");
         require(
-            rewardRate * duration <= rewardsToken.balanceOf(address(this)),
+            rewardRate * duration <= rewardToken.balanceOf(address(this)),
             "reward amount > balance"
         );
 
