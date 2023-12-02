@@ -36,6 +36,7 @@ contract Staking is Ownable {
     event Withdrawn(address indexed user, uint256 amount);
     event RewardPaid(address indexed user, uint256 reward);
     event RewardsDurationUpdated(uint256 newDuration);
+    event StakingStopped(address owner);
 
     constructor(
         address _stakingToken,
@@ -105,6 +106,7 @@ contract Staking is Ownable {
     function claim() external updateReward(msg.sender) {
         uint reward = rewards[msg.sender];
         if (reward > 0) {
+            //TODO handle rate conversion between staking token and reward token
             rewards[msg.sender] = 0;
             rewardToken.safeTransfer(msg.sender, reward);
             emit RewardPaid(msg.sender, reward);
@@ -123,7 +125,8 @@ contract Staking is Ownable {
     function notifyRewardAmount(
         uint _amount
     ) external onlyOwner updateReward(address(0)) {
-        require(totalSupply >= targetSupply, "insuficient staking");
+        require(isStakingFull(), "insuficient staking");
+
         if (block.timestamp >= finishAt) {
             rewardRate = _amount / duration;
         } else {
@@ -140,6 +143,16 @@ contract Staking is Ownable {
         finishAt = block.timestamp + duration;
         updatedAt = block.timestamp;
         emit RewardAdded(_amount);
+    }
+
+    function stopStaking() external onlyOwner {
+        require(finishAt > block.timestamp, "staking already over");
+        finishAt = block.timestamp;
+        emit StakingStopped(msg.sender);
+    }
+
+    function isStakingFull() public view returns (bool) {
+        return totalSupply >= targetSupply;
     }
 
     function _min(uint x, uint y) private pure returns (uint) {
