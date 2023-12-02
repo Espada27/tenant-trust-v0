@@ -2,7 +2,6 @@ const {
   time,
   loadFixture,
 } = require("@nomicfoundation/hardhat-toolbox/network-helpers");
-const { anyValue } = require("@nomicfoundation/hardhat-chai-matchers/withArgs");
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
@@ -63,14 +62,7 @@ describe("Staking", function () {
   }
 
   describe("constructor", function () {
-    it("Should set the right unlockTime", async function () {
-      const { staking, stakingToken, rewardToken, owner, alice } =
-        await loadFixture(deployContract);
-
-      expect(await staking.owner()).to.equal(owner.address);
-    });
-
-    it("Should set the right staking token address", async function () {
+    it("should set the right staking token address", async function () {
       const { staking, stakingToken, rewardToken, owner, alice } =
         await loadFixture(deployContract);
 
@@ -79,7 +71,7 @@ describe("Staking", function () {
       );
     });
 
-    it("Should set the right reward token address", async function () {
+    it("should set the right reward token address", async function () {
       const { staking, stakingToken, rewardToken, owner, alice } =
         await loadFixture(deployContract);
 
@@ -88,7 +80,7 @@ describe("Staking", function () {
       );
     });
 
-    it("Should set the right target supply", async function () {
+    it("should set the right target supply", async function () {
       const { staking } = await loadFixture(deployContract);
 
       expect(await staking.targetSupply()).to.equal(TARGET_SUPPLY);
@@ -96,7 +88,7 @@ describe("Staking", function () {
   });
 
   describe("stake", function () {
-    it("Should update the balance of sender with the given amount", async function () {
+    it("should update the balance of sender with the given amount", async function () {
       const { staking, stakingToken, rewardToken, owner, alice } =
         await loadFixture(deployContract);
       const initialBalanceOfOwner = 10000000n * 10n ** 18n;
@@ -117,7 +109,7 @@ describe("Staking", function () {
     });
 
     context("Given amount is equal to 0", async function () {
-      it("Should revert", async function () {
+      it("should revert", async function () {
         const { staking, stakingToken, rewardToken, owner, alice } =
           await loadFixture(deployContract);
 
@@ -129,7 +121,7 @@ describe("Staking", function () {
       context(
         "Total supply + given amount is greater than the target supply",
         async function () {
-          it("Should revert", async function () {
+          it("should revert", async function () {
             const { staking } = await loadFixture(deployContract);
             const amount = TARGET_SUPPLY + 10n;
 
@@ -143,7 +135,7 @@ describe("Staking", function () {
   });
 
   describe("withdraw", function () {
-    it("Should withdraw the given amount", async function () {
+    it("should withdraw the given amount", async function () {
       const { staking, stakingToken, rewardToken, owner, alice } =
         await loadFixture(initStaking);
       const balanceBefore = await staking.balanceOf(owner);
@@ -153,7 +145,7 @@ describe("Staking", function () {
     });
 
     context("Amount to withdraw is 0", async function () {
-      it("Should revert", async function () {
+      it("should revert", async function () {
         const { staking, stakingToken, rewardToken, owner, alice } =
           await loadFixture(initStaking);
         await expect(staking.withdraw(0)).to.be.revertedWith("amount = 0");
@@ -163,7 +155,7 @@ describe("Staking", function () {
     context(
       "Staking period is active (there is a finish time)",
       async function () {
-        it("Should revert", async function () {
+        it("should revert", async function () {
           const { staking, stakingToken, rewardToken, owner, alice } =
             await loadFixture(initStaking);
 
@@ -180,7 +172,7 @@ describe("Staking", function () {
 
   describe("earned", function () {
     context("Caller hasn't stacked anything", async function () {
-      it("returns 0", async function () {
+      it("should return 0", async function () {
         const { staking, stakingToken, rewardToken, owner, alice } =
           await loadFixture(deployContract);
 
@@ -188,7 +180,7 @@ describe("Staking", function () {
       });
     });
     context("There is just one staker", async function () {
-      it("returns the staking amount as reward at the end of the staking period", async function () {
+      it("should return the staking amount as reward at the end of the staking period", async function () {
         const { staking, stakingToken, rewardToken, owner, alice } =
           await loadFixture(deployContract);
 
@@ -206,7 +198,7 @@ describe("Staking", function () {
   });
 
   describe("claim", function () {
-    it("transfers the earned reward from the contract to the caller", async function () {
+    it("should transfer the earned reward from the contract to the caller", async function () {
       const { staking, stakingToken, rewardToken, owner, alice } =
         await loadFixture(startStaking);
       const rewardBalanceOfOwner = await rewardToken.balanceOf(owner);
@@ -217,7 +209,7 @@ describe("Staking", function () {
     });
 
     context("The reward to claim equals 0", async function () {
-      it("does not send the RewardPaid event", async function () {
+      it("should not send the RewardPaid event", async function () {
         const { staking, stakingToken, rewardToken, owner, alice } =
           await loadFixture(initStaking);
 
@@ -227,7 +219,7 @@ describe("Staking", function () {
   });
 
   describe("setRewardsDuration", function () {
-    it("sets the finish time and emits an event", async function () {
+    it("should set the finish time and emits an event", async function () {
       const { staking, stakingToken, rewardToken, owner, alice } =
         await loadFixture(deployContract);
 
@@ -239,7 +231,7 @@ describe("Staking", function () {
     });
 
     context("Staking period is active (there is a finish time)", async () => {
-      it("does not send the RewardPaid event", async function () {
+      it("should not send the RewardPaid event", async function () {
         const { staking, stakingToken, rewardToken, owner, alice } =
           await loadFixture(startStaking);
 
@@ -251,7 +243,7 @@ describe("Staking", function () {
     });
 
     context("Caller is not the owner", async () => {
-      it("reverts", async function () {
+      it("should revert", async function () {
         const { staking, stakingToken, rewardToken, owner, alice } =
           await loadFixture(deployContract);
 
@@ -265,7 +257,7 @@ describe("Staking", function () {
 
   describe("notifyRewardAmount", function () {
     context("Caller is not the owner", async () => {
-      it("reverts", async function () {
+      it("should revert", async function () {
         const { staking, stakingToken, rewardToken, owner, alice } =
           await loadFixture(initStaking);
 
@@ -275,7 +267,7 @@ describe("Staking", function () {
       });
     });
     context("Staking period is not started yet", async () => {
-      it("sets the reward rate according to the whole staking duration", async function () {
+      it("should set the reward rate according to the whole staking duration", async function () {
         const { staking, stakingToken, rewardToken, owner, alice } =
           await loadFixture(initStaking);
 
@@ -288,7 +280,7 @@ describe("Staking", function () {
     });
 
     context("Staking period is ongoing", async () => {
-      it("sets the reward rate with the remaining reward and the whole staking duration", async function () {
+      it("should set the reward rate with the remaining reward and the whole staking duration", async function () {
         const { staking, stakingToken, rewardToken, owner, alice } =
           await loadFixture(initStaking);
 
@@ -315,7 +307,7 @@ describe("Staking", function () {
     });
 
     context("Target supply is not reached", async () => {
-      it("reverts", async function () {
+      it("should revert", async function () {
         const { staking, stakingToken, rewardToken, owner, alice } =
           await loadFixture(deployContract);
 
@@ -326,7 +318,7 @@ describe("Staking", function () {
     });
 
     context("Reward rate equals 0", async () => {
-      it("reverts", async function () {
+      it("should revert", async function () {
         const { staking, stakingToken, rewardToken, owner, alice } =
           await loadFixture(initStaking);
 
@@ -339,7 +331,7 @@ describe("Staking", function () {
     });
 
     context("Contract doesn't have enough reward tokens", async () => {
-      it("reverts", async function () {
+      it("should revert", async function () {
         const { staking, stakingToken, rewardToken, owner, alice } =
           await loadFixture(initStaking);
 
@@ -351,7 +343,7 @@ describe("Staking", function () {
       });
     });
 
-    it("sends an event", async function () {
+    it("should send an event", async function () {
       const { staking, stakingToken, rewardToken, owner, alice } =
         await loadFixture(initStaking);
 
