@@ -1,5 +1,4 @@
 const {
-  time,
   loadFixture,
 } = require("@nomicfoundation/hardhat-toolbox/network-helpers");
 const { expect } = require("chai");
@@ -7,7 +6,7 @@ const { ethers } = require("hardhat");
 
 describe("TenantTrustToken", function () {
   async function deployContract() {
-    const [owner, alice, bob] = await ethers.getSigners();
+    const [owner] = await ethers.getSigners();
 
     const TenantTrustToken = await ethers.getContractFactory(
       "TenantTrustToken"
