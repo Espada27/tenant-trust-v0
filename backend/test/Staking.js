@@ -6,8 +6,8 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
 const TARGET_SUPPLY = ethers.parseUnits("10000", 18);
-const STAKING_AMOUNT = 100n * 10n ** 18n;
-const ONE_HOUR_REWARD = ethers.parseUnits("1000", 18);
+const STAKING_AMOUNT = ethers.parseUnits("5000", 18);
+const ONE_HOUR_REWARD = ethers.parseUnits("500", 18);
 
 describe("Staking", function () {
   async function deployContract() {
@@ -39,13 +39,11 @@ describe("Staking", function () {
     await staking.stake(STAKING_AMOUNT);
 
     //Init balance of Alice
-    await stakingToken.transfer(alice, TARGET_SUPPLY - STAKING_AMOUNT);
+    await stakingToken.transfer(alice, STAKING_AMOUNT);
 
-    await stakingToken
-      .connect(alice)
-      .approve(staking, TARGET_SUPPLY - STAKING_AMOUNT);
+    await stakingToken.connect(alice).approve(staking, STAKING_AMOUNT);
     //Stake enough tokens to be able to start the staking phase
-    await staking.connect(alice).stake(TARGET_SUPPLY - STAKING_AMOUNT);
+    await staking.connect(alice).stake(STAKING_AMOUNT);
 
     return { staking, stakingToken, rewardToken, owner, alice };
   }
@@ -201,19 +199,24 @@ describe("Staking", function () {
     it("should transfer the earned reward from the contract to the caller", async function () {
       const { staking, stakingToken, rewardToken, owner, alice } =
         await loadFixture(startStaking);
-      const rewardBalanceOfOwner = await rewardToken.balanceOf(owner);
-      const stakingBalanceOfOwner = await staking.balanceOf(owner);
-
+      await time.increase(3600);
+      const earned = await staking.earned(owner);
+      const balanceBefore = await rewardToken.balanceOf(owner);
+      expect(earned).to.be.closeTo(
+        ONE_HOUR_REWARD / 2n,
+        ethers.parseUnits("1", 18)
+      );
       await staking.claim();
-      expect(await staking.earned(owner)).to.equal(0);
+      expect(await rewardToken.balanceOf(owner)).to.equal(
+        balanceBefore + earned
+      );
     });
 
     context("The reward to claim equals 0", async function () {
-      it("should not send the RewardPaid event", async function () {
-        const { staking, stakingToken, rewardToken, owner, alice } =
-          await loadFixture(initStaking);
+      it("revert", async function () {
+        const { staking } = await loadFixture(initStaking);
 
-        await expect(await staking.claim()).to.not.emit(staking, "RewardPaid");
+        await expect(staking.claim()).to.be.revertedWith("no reward to claim");
       });
     });
   });
