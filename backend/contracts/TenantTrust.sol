@@ -50,13 +50,18 @@ contract TenantTrust is Ownable {
         uint dailyRate
     );
     event RentStopped(address indexed tenant, address indexed landlord);
-    event ContractApproved(address indexed tenant, address indexed landlord);
+    event ContractApproved(
+        address indexed tenant,
+        address indexed landlord,
+        address approvedAddress
+    );
     event RentPaid(
         address indexed tenant,
         address indexed landlord,
         uint rentAmount,
         uint alreadyPaid
     );
+    event Withdrawn(address indexed landlord, uint amount);
 
     constructor(
         uint _rate,
@@ -80,8 +85,8 @@ contract TenantTrust is Ownable {
         );
 
         Staking stakingContract = new Staking(
-            address(stakingToken),
-            address(rewardToken),
+            stakingToken,
+            rewardToken,
             _rentalDeposit
         );
 
@@ -111,25 +116,33 @@ contract TenantTrust is Ownable {
     ) external onlyTenant(_landlord) {
         Rent storage rent = rents[_landlord][msg.sender];
         require(
-            (_amount * 12) / 365 >= rent.rentRate + rent.rentFees * 2,
+            _amount / (rent.rentRate + rent.rentFees) > 0,
             "insuficient amount"
         );
-        uint fees = percentage(_amount, interestBps);
-        //Substract fees paid by the landlord and the tenant (hence the x2)
-        uint rawRent = _amount - 2 * fees;
+
+        uint netRent = getRawRent(_amount, interestBps);
+        uint fees = _amount - netRent;
 
         stakingToken.safeTransferFrom(msg.sender, address(this), _amount);
 
-        balanceOf[_landlord] += rawRent;
-        rent.alreadyPaid += rawRent;
+        balanceOf[_landlord] += netRent - fees;
+        rent.alreadyPaid += netRent;
 
-        emit RentPaid(msg.sender, _landlord, rawRent, rent.alreadyPaid);
+        emit RentPaid(msg.sender, _landlord, netRent, rent.alreadyPaid);
+    }
+
+    function getRawRent(
+        uint _amount,
+        uint _interestBps
+    ) public pure returns (uint) {
+        return (_amount * 10 ** 18) / (10 ** 18 + _interestBps * 10 ** 14);
     }
 
     function withdraw(uint _amount) external {
         require(balanceOf[msg.sender] >= _amount, "insuficient funds");
         balanceOf[msg.sender] -= _amount;
         stakingToken.safeTransfer(msg.sender, _amount);
+        emit Withdrawn(msg.sender, _amount);
     }
 
     function approveContract(
@@ -141,33 +154,29 @@ contract TenantTrust is Ownable {
             "not allowed"
         );
         Rent storage rent = rents[_landlord][_tenant];
+        address approvedAddress;
         if (msg.sender == _tenant) {
             rent.tenantApproval = true;
-        } else if (msg.sender == _landlord) {
-            rent.landlordApproval = true;
+            approvedAddress = _tenant;
         } else {
-            revert("not allowed");
+            rent.landlordApproval = true;
+            approvedAddress = _landlord;
         }
+        emit ContractApproved(_tenant, _landlord, approvedAddress);
     }
 
     function startRent(address _tenant) external onlyLandlord(_tenant) {
         Rent storage rent = rents[msg.sender][_tenant];
         require(rent.stakingContract.isStakingFull(), "insuficient staking");
-        require(rent.startTime > 0, "already started");
+        require(rent.startTime == 0, "already started");
         require(rent.tenantApproval && rent.landlordApproval, "not approved");
 
-        //Définir le nombre de récompenses à verser pour la durée du contrat
-        rent.stakingContract.notifyRewardAmount(rent.rentaDeposit);
+        uint rewardAmount = percentage(rent.rentaDeposit, interestBps);
+        rent.stakingContract.notifyRewardAmount(rewardAmount);
         rent.startTime = block.timestamp;
 
         uint rentRate = rent.rentRate + percentage(rent.rentRate, interestBps);
         emit RentStarted(_tenant, msg.sender, rentRate);
-    }
-
-    function stopRent(address _tenant) external onlyLandlord(_tenant) {
-        Rent storage rent = rents[msg.sender][_tenant];
-        rent.duration = block.timestamp - rent.startTime;
-        emit RentStopped(_tenant, msg.sender);
     }
 
     modifier onlyLandlord(address _tenant) {
@@ -176,7 +185,7 @@ contract TenantTrust is Ownable {
     }
 
     modifier onlyTenant(address _landlord) {
-        require(rents[_landlord][msg.sender].creationTime > 0, "not landlord");
+        require(rents[_landlord][msg.sender].creationTime > 0, "not tenant");
         _;
     }
 
@@ -191,7 +200,7 @@ contract TenantTrust is Ownable {
     function percentage(
         uint256 amount,
         uint256 bps
-    ) private pure returns (uint256) {
+    ) public pure returns (uint256) {
         require(amount * bps >= 10_000, "incorrect value");
         return ((amount * bps) / 10_000);
     }
