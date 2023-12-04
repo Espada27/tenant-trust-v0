@@ -39,12 +39,12 @@ contract Staking is Ownable {
     event StakingStopped(address owner);
 
     constructor(
-        address _stakingToken,
-        address _rewardToken,
+        IERC20 _stakingToken,
+        IERC20 _rewardToken,
         uint _targetSupply
     ) Ownable(msg.sender) {
-        stakingToken = IERC20(_stakingToken);
-        rewardToken = IERC20(_rewardToken);
+        stakingToken = _stakingToken;
+        rewardToken = _rewardToken;
         targetSupply = _targetSupply;
     }
 
@@ -105,12 +105,11 @@ contract Staking is Ownable {
 
     function claim() external updateReward(msg.sender) {
         uint reward = rewards[msg.sender];
-        if (reward > 0) {
-            //TODO handle rate conversion between staking token and reward token
-            rewards[msg.sender] = 0;
-            rewardToken.safeTransfer(msg.sender, reward);
-            emit RewardPaid(msg.sender, reward);
-        }
+        require(reward > 0, "no reward to claim");
+        //TODO handle rate conversion between staking token and reward token
+        rewards[msg.sender] = 0;
+        rewardToken.safeTransfer(msg.sender, reward);
+        emit RewardPaid(msg.sender, reward);
     }
 
     function setRewardsDuration(uint _duration) external onlyOwner {
@@ -143,12 +142,6 @@ contract Staking is Ownable {
         finishAt = block.timestamp + duration;
         updatedAt = block.timestamp;
         emit RewardAdded(_amount);
-    }
-
-    function stopStaking() external onlyOwner {
-        require(finishAt > block.timestamp, "staking already over");
-        finishAt = block.timestamp;
-        emit StakingStopped(msg.sender);
     }
 
     function isStakingFull() public view returns (bool) {
