@@ -6,23 +6,28 @@
 // global scope, and execute the script.
 const hre = require("hardhat");
 
+const DEFAULT_BPS = 500n;
+
 async function main() {
-  const currentTimestampInSeconds = Math.round(Date.now() / 1000);
-  const unlockTime = currentTimestampInSeconds + 60;
+  const tenantTrustToken = await hre.ethers.deployContract("TenantTrustToken");
 
-  const lockedAmount = hre.ethers.parseEther("0.001");
+  await tenantTrustToken.waitForDeployment();
 
-  const lock = await hre.ethers.deployContract("Lock", [unlockTime], {
-    value: lockedAmount,
-  });
+  console.log(`TenantTrustToken deployed to ${tenantTrustToken.target}`);
 
-  await lock.waitForDeployment();
+  const stakingToken = await hre.ethers.deployContract("StakingToken");
+  await stakingToken.waitForDeployment();
 
-  console.log(
-    `Lock with ${ethers.formatEther(
-      lockedAmount
-    )}ETH and unlock timestamp ${unlockTime} deployed to ${lock.target}`
-  );
+  console.log(`StakingToken deployed to ${stakingToken.target}`);
+
+  const tenantTrust = await hre.ethers.deployContract("TenantTrust", [
+    DEFAULT_BPS,
+    stakingToken.target,
+    tenantTrustToken.target,
+  ]);
+  await tenantTrust.waitForDeployment();
+
+  console.log(`TenantTrust deployed to ${tenantTrust.target}`);
 }
 
 // We recommend this pattern to be able to use async/await everywhere
