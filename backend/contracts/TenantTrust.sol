@@ -28,7 +28,7 @@ contract TenantTrust is Ownable {
         //Amount already paid by the tenant
         uint alreadyPaid;
         //Rental deposit required by the landlord
-        uint rentaDeposit;
+        uint rentalDeposit;
         //URI of the real world contract
         string leaseUri;
         //Landlord ok to start the contract
@@ -171,7 +171,7 @@ contract TenantTrust is Ownable {
         require(rent.startTime == 0, "already started");
         require(rent.tenantApproval && rent.landlordApproval, "not approved");
 
-        uint rewardAmount = percentage(rent.rentaDeposit, interestBps);
+        uint rewardAmount = percentage(rent.rentalDeposit, interestBps);
         rent.stakingContract.notifyRewardAmount(rewardAmount);
         rent.startTime = block.timestamp;
 

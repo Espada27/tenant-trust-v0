@@ -28,6 +28,22 @@ async function main() {
   await tenantTrust.waitForDeployment();
 
   console.log(`TenantTrust deployed to ${tenantTrust.target}`);
+
+  const monthlyRent = 500n * 10n ** 18n;
+  const rentalDeposit = monthlyRent * 12n;
+  const leaseUrl = "http://myServer.com/file";
+  const [owner, alice, bob] = await ethers.getSigners();
+
+  await tenantTrust.createRentContract(
+    alice,
+    monthlyRent,
+    rentalDeposit,
+    leaseUrl
+  );
+
+  await tenantTrust
+    .connect(bob)
+    .createRentContract(owner, monthlyRent * 2n, rentalDeposit * 2n, leaseUrl);
 }
 
 // We recommend this pattern to be able to use async/await everywhere
