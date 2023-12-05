@@ -77,7 +77,7 @@ contract TenantTrust is Ownable {
         address _tenant,
         uint _monthlyRent,
         uint _rentalDeposit,
-        string memory leasetUri
+        string memory leaseUri
     ) external {
         require(
             address(rents[msg.sender][_tenant].stakingContract) == address(0),
@@ -101,7 +101,7 @@ contract TenantTrust is Ownable {
             percentage(dailyRent, interestBps),
             0,
             _rentalDeposit,
-            leasetUri,
+            leaseUri,
             false,
             false,
             block.timestamp
