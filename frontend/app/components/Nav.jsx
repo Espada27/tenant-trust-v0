@@ -6,6 +6,7 @@ import {
   Stat,
   StatLabel,
   StatNumber,
+  Text,
   VStack,
 } from "@chakra-ui/react";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
@@ -14,11 +15,15 @@ import { useAccount, useBalance, usePublicClient } from "wagmi";
 import { STAKING_TOKEN_ADDRESS } from "../constants/constant";
 import { useEffect, useState } from "react";
 import useRewardToken from "../hooks/useRewardToken";
+import { numberWithSpaces } from "../utils/numberUtils";
 
 export default function Nav() {
   const { address, isConnected } = useAccount();
   const [TTTBalance, setTTTBalance] = useState(0);
   const { getBalance } = useRewardToken();
+
+  //Fixes hydration issue
+  const [isClient, setIsClient] = useState(false);
 
   const { data } = useBalance({
     address: address,
@@ -27,15 +32,23 @@ export default function Nav() {
   });
 
   useEffect(() => {
+    setIsClient(true);
+
     if (!isConnected) {
       setTTTBalance(0);
       return;
     }
     const getTTTBalance = async () => {
       const balance = await getBalance();
-      setTTTBalance(Number(balance));
+      setTTTBalance(numberWithSpaces(balance));
     };
+
+    const interval = setInterval(getTTTBalance, 5000);
     getTTTBalance();
+
+    return () => {
+      clearInterval(interval);
+    };
   }, [isConnected]);
 
   return (
@@ -52,20 +65,12 @@ export default function Nav() {
       </Box>
 
       <Spacer />
-      {isConnected ? (
-        <VStack py={5}>
-          <Stat p={5}>
-            <StatLabel p={0} m={0}>
-              Balance
-            </StatLabel>
-            <StatNumber>{TTTBalance} TTT</StatNumber>
-            <StatNumber>
-              {data?.formatted} {data?.symbol}
-            </StatNumber>
-          </Stat>
-
-          <Box pr={"10px"}></Box>
-          <Box pr={"10px"}></Box>
+      {isClient && isConnected ? (
+        <VStack pr={5}>
+          <Text fontSize={"lg"}>{TTTBalance} TTT</Text>
+          <Text fontSize={"lg"}>
+            {numberWithSpaces(data?.formatted)} {data?.symbol}
+          </Text>
         </VStack>
       ) : (
         <></>

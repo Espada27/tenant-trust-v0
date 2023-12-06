@@ -101,7 +101,7 @@ const useStaking = (stakingAddress) => {
         args: [address],
       });
       //get 4 decimals precision
-      return Number(data / 10n ** 14n);
+      return Number(data / 10n ** 18n);
     } catch (err) {
       console.error("Error in earned:", err.message);
     }

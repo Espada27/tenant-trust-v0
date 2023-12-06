@@ -22,6 +22,7 @@ const prepareRentDataWrite = (rent) => {
 };
 
 const rentArrayToObject = (rent, landlordAddress, tenantAddress) => {
+  console.log("Already paid = ", rent[5]);
   return {
     stakingContract: rent[0],
     startTime: Number(rent[1]) * 1000,
@@ -109,6 +110,26 @@ const useTenantTrust = () => {
     }
   };
 
+  const payRent = async (rent, amount) => {
+    console.log("Paying the rent :", amount);
+    const walletClient = await getWalletClient();
+    try {
+      const { request } = await prepareWriteContract({
+        address: TENANT_TRUST_ADDRESS,
+        abi: TENANT_TRUST_ABI,
+        functionName: "payRent",
+        args: [rent.landlordAddress, BigInt(amount) * 10n ** 18n],
+        account: walletClient.account,
+      });
+      const { hash } = await writeContract(request);
+      await waitForTransaction({ hash });
+      successToast("Loyer payé !", `Vous avez payé ${amount} USDC`);
+    } catch (error) {
+      errorToast("Erreur", "Erreur lors du paiement du loyer");
+      console.error("Error while creating a rent contract:", error);
+    }
+  };
+
   const startRentContract = async (rent) => {
     console.log("Starting the contract : ", rent);
     const walletClient = await getWalletClient();
@@ -147,20 +168,6 @@ const useTenantTrust = () => {
     }
   };
 
-  const getRentDuration = async () => {
-    try {
-      const data = await readContract({
-        address: TENANT_TRUST_ADDRESS,
-        abi: TENANT_TRUST_ABI,
-        functionName: "rentDuration",
-      });
-      console.log("Rent duration = ", data);
-      setRentDuration(bigIntToNumber(data));
-    } catch (err) {
-      console.error("Error in checkIfOwner:", err.message);
-    }
-  };
-
   const getRent = async (landlordAddress, tenantAddress) => {
     try {
       const data = await readContract({
@@ -185,7 +192,46 @@ const useTenantTrust = () => {
       console.log("Interest BPS = ", data);
       return Number(data);
     } catch (err) {
-      console.error("Error while fetching the rent:", err.message);
+      console.error("Error while fetching the interest rate:", err.message);
+    }
+  };
+
+  const getLandlordBalance = async () => {
+    try {
+      const data = await readContract({
+        address: TENANT_TRUST_ADDRESS,
+        abi: TENANT_TRUST_ABI,
+        functionName: "balanceOf",
+        args: [address],
+      });
+      console.log("Tenant Trust, balance of landlord", data);
+      return data;
+    } catch (err) {
+      console.error(
+        "Tenant Trust, Error while fetching the balance of landlord:",
+        err.message
+      );
+    }
+  };
+
+  const withdrawRent = async () => {
+    console.log("Withdrawing the paid rend : ");
+    const walletClient = await getWalletClient();
+    try {
+      const { request } = await prepareWriteContract({
+        address: TENANT_TRUST_ADDRESS,
+        abi: TENANT_TRUST_ABI,
+        functionName: "withdraw",
+        args: [await getLandlordBalance()],
+        account: walletClient.account,
+      });
+      const { hash } = await writeContract(request);
+      await waitForTransaction({ hash });
+      console.log("Rent withdrawn");
+      successToast("Loyer prélevé !", "Vous avez prélevé le loyer");
+    } catch (error) {
+      errorToast("Erreur", "Erreur lors du prélèvemnt de loyer");
+      console.error("Error while withdrawing the rent :", error);
     }
   };
 
@@ -199,8 +245,11 @@ const useTenantTrust = () => {
     startRentContract,
     getInterestRate,
     getRent,
+    payRent,
     isOwner,
     rentDuration,
+    getLandlordBalance,
+    withdrawRent,
   };
 };
 

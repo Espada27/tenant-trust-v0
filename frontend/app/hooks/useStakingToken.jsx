@@ -21,7 +21,7 @@ const useStakingToken = (stakingAddress) => {
   const [isOwner, setIsOwner] = useState(false);
   const { address, isConnected } = useAccount();
 
-  const increaseAllowance = async (amount) => {
+  const increaseAllowance = async (spender, amount) => {
     const bigIntAmount = BigInt(amount) * 10n ** 18n;
     console.log("Approve : ", stakingAddress, bigIntAmount);
     const walletClient = await getWalletClient();
@@ -30,7 +30,7 @@ const useStakingToken = (stakingAddress) => {
         address: STAKING_TOKEN_ADDRESS,
         abi: STAKING_TOKEN_ABI,
         functionName: "approve",
-        args: [stakingAddress, bigIntAmount],
+        args: [spender, bigIntAmount],
         account: walletClient.account,
       });
       const { hash } = await writeContract(request);
@@ -57,13 +57,13 @@ const useStakingToken = (stakingAddress) => {
     }
   };
 
-  const allowance = async () => {
+  const allowance = async (spender) => {
     try {
       const data = await readContract({
         address: STAKING_TOKEN_ADDRESS,
         abi: STAKING_TOKEN_ABI,
         functionName: "allowance",
-        args: [address, stakingAddress],
+        args: [address, spender],
       });
       console.log("Get allowance : ", data);
       return bigIntToNumber(data);

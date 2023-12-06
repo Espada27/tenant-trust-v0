@@ -19,6 +19,11 @@ import {
   CircularProgress,
   CircularProgressLabel,
   Spacer,
+  StackDivider,
+  VStack,
+  UnorderedList,
+  ListItem,
+  Flex,
 } from "@chakra-ui/react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -32,6 +37,7 @@ import img2 from "../../public/images/img2.jpeg";
 import img3 from "../../public/images/img3.jpeg";
 import img4 from "../../public/images/img4.jpeg";
 import { cropAddress } from "../utils/addressUtils";
+import { TENANT_TRUST_ADDRESS } from "../constants/constant";
 
 export default function RentCard({ rent }) {
   const { address } = useAccount();
@@ -48,8 +54,14 @@ export default function RentCard({ rent }) {
   const { increaseAllowance, allowance } = useStakingToken(
     rent.stakingContract
   );
-  const { approveRent, startRentContract, getInterestRate, rentDuration } =
-    useTenantTrust();
+  const {
+    approveRent,
+    startRentContract,
+    getInterestRate,
+    payRent,
+    getLandlordBalance,
+    withdrawRent,
+  } = useTenantTrust();
   const { transferTo, isRewardOwner } = useRewardToken();
 
   const isLandlord = address == rent.landlordAddress;
@@ -61,6 +73,9 @@ export default function RentCard({ rent }) {
   const [earnedAmount, setEarnedAmount] = useState(0);
   const [earnAmountInterval, setEarnedAmountInterval] = useState();
   const [userStaked, setUserStaked] = useState();
+  const [rentInput, setRentInput] = useState();
+  const [totalPaidRent, setTotalPaidRent] = useState();
+  const [landlordBalance, setLandlordBalance] = useState(0);
 
   //Demo only
   const randomImageSrc = [img1.src, img2.src, img3.src, img4.src][
@@ -96,15 +111,21 @@ export default function RentCard({ rent }) {
 
       const intervalId = setInterval(async () => {
         let newValue = await earned();
-        newValue = newValue.toString().split("");
-        newValue.splice(2, 0, ".");
-        setEarnedAmount(newValue.join(""));
-      }, 5000);
+        setEarnedAmount(newValue);
+      }, 1000);
       setEarnedAmountInterval(intervalId);
     };
 
     initInterval();
+    setTotalPaidRent(rent.alreadyPaid);
 
+    const initLandlordBalance = async () => {
+      if (isLandlord) {
+        setLandlordBalance(await getLandlordBalance());
+      }
+    };
+
+    initLandlordBalance();
     return () => {
       clearInterval(earnAmountInterval);
       setEarnedAmountInterval(null);
@@ -171,6 +192,29 @@ export default function RentCard({ rent }) {
     }
   };
 
+  const handlePayRent = async () => {
+    try {
+      if ((await allowance(TENANT_TRUST_ADDRESS)) <= rentInput) {
+        console.log("Increase allowance needed");
+        await increaseAllowance(TENANT_TRUST_ADDRESS, rentInput);
+      }
+      console.log("Paying the rent", rentInput);
+      await payRent(rent, rentInput);
+    } catch (error) {
+      console.log("Error while paying the rent", error);
+    }
+  };
+
+  const claimRent = async () => {
+    try {
+      console.log("Withdrawing the rent");
+      await withdrawRent();
+      setLandlordBalance(0);
+    } catch (error) {
+      console.log("Error while withdrawing the rent", error);
+    }
+  };
+
   return (
     <Card
       direction={{ base: "column", sm: "row" }}
@@ -188,72 +232,86 @@ export default function RentCard({ rent }) {
 
       <Stack w={"100%"}>
         <CardBody>
-          <Text>
-            Addresse du contrat de caution :{" "}
-            <Link
-              color="teal.500"
-              href={
-                "https://sepolia.etherscan.io/address/" + rent.stakingContract
-              }
-              isExternal
-            >
-              {cropAddress(rent.stakingContract)} <ExternalLinkIcon mx="2px" />
-            </Link>
-          </Text>
-          <Text>
-            Date de création du contrat : {new Date().toLocaleDateString()}
-          </Text>
-          <Text>Caution requise : {rent.rentalDeposit} USDC</Text>
-          <Text>Caution actuelle : {currentDeposit} USDC</Text>
-          <Text>Votre contribution : {userStaked} USDC</Text>
-          {earnedAmount > 0 ? (
-            <HStack w={"100%"}>
-              <Text>Récompense de staking : {earnedAmount} TTT</Text>
-              <Button
-                size="xs"
-                variant="solid"
-                colorScheme="blue"
-                onClick={claimRewards}
-              >
-                Claim
-              </Button>
-            </HStack>
-          ) : (
-            <></>
-          )}
-
-          <Text>
-            Bailleur :{" "}
-            <Link
-              color="teal.500"
-              href={
-                "https://sepolia.etherscan.io/address/" + rent.landlordAddress
-              }
-              isExternal
-            >
-              {cropAddress(rent.landlordAddress)} <ExternalLinkIcon mx="2px" />
-            </Link>
-          </Text>
-          <Text>
-            Locataire :{" "}
-            <Link
-              color="teal.500"
-              href={
-                "https://sepolia.etherscan.io/address/" + rent.tenantAddress
-              }
-              isExternal
-            >
-              {cropAddress(rent.tenantAddress)} <ExternalLinkIcon mx="2px" />
-            </Link>
-          </Text>
-          {rent.startTime > 0 ? (
-            <Text>
-              Contrat démarré le :{" "}
-              {new Date(rent.startTime).toLocaleDateString()}
-            </Text>
-          ) : (
-            <></>
-          )}
+          <HStack>
+            <Box>
+              <UnorderedList>
+                <ListItem>
+                  Addresse du contrat de caution :{" "}
+                  <Link
+                    color="teal.500"
+                    href={
+                      "https://sepolia.etherscan.io/address/" +
+                      rent.stakingContract
+                    }
+                    isExternal
+                  >
+                    {cropAddress(rent.stakingContract)}{" "}
+                    <ExternalLinkIcon mx="2px" />
+                  </Link>
+                </ListItem>
+                <ListItem>
+                  Date de création du contrat :{" "}
+                  {new Date().toLocaleDateString()}
+                </ListItem>
+                <ListItem>
+                  Caution : {currentDeposit} / {rent.rentalDeposit} USDC
+                </ListItem>
+                <ListItem>
+                  Bailleur :{" "}
+                  <Link
+                    color="teal.500"
+                    href={
+                      "https://sepolia.etherscan.io/address/" +
+                      rent.landlordAddress
+                    }
+                    isExternal
+                  >
+                    {cropAddress(rent.landlordAddress)}{" "}
+                    <ExternalLinkIcon mx="2px" />
+                  </Link>
+                </ListItem>
+                <ListItem>
+                  Locataire :{" "}
+                  <Link
+                    color="teal.500"
+                    href={
+                      "https://sepolia.etherscan.io/address/" +
+                      rent.tenantAddress
+                    }
+                    isExternal
+                  >
+                    {cropAddress(rent.tenantAddress)}{" "}
+                    <ExternalLinkIcon mx="2px" />
+                  </Link>
+                </ListItem>
+                {rent.startTime > 0 ? (
+                  <ListItem>
+                    Contrat démarré le :{" "}
+                    {new Date(rent.startTime).toLocaleDateString()}
+                  </ListItem>
+                ) : (
+                  <></>
+                )}
+                <ListItem>
+                  Montant du loyer payé : {totalPaidRent} USDC
+                </ListItem>
+              </UnorderedList>
+            </Box>
+            <Spacer />
+            <Box>
+              <VStack>
+                <Flex>
+                  <UnorderedList>
+                    <ListItem>
+                      Récompense de staking : {earnedAmount} TTT
+                    </ListItem>
+                    <ListItem>Votre contribution : {userStaked} USDC</ListItem>
+                  </UnorderedList>
+                </Flex>
+                <Spacer />
+              </VStack>
+            </Box>
+          </HStack>
         </CardBody>
 
         <CardFooter>
@@ -332,6 +390,45 @@ export default function RentCard({ rent }) {
                   onClick={handleWithdraw}
                 >
                   Withdraw
+                </Button>
+              </>
+            ) : (
+              <></>
+            )}
+            {isLandlord && landlordBalance > 0 ? (
+              <Button variant="solid" colorScheme="blue" onClick={claimRent}>
+                Retirer le loyer
+              </Button>
+            ) : (
+              <></>
+            )}
+            {userStaked && rent.startTime > 0 ? (
+              <Button variant="solid" colorScheme="blue" onClick={claimRewards}>
+                Claim
+              </Button>
+            ) : (
+              <></>
+            )}
+            {rent.tenantAddress == address && rent.startTime > 0 ? (
+              <>
+                <NumberInput
+                  w={"15%"}
+                  min={0}
+                  value={rentInput}
+                  onChange={(value) => setRentInput(value)}
+                >
+                  <NumberInputField />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
+                <Button
+                  variant="solid"
+                  colorScheme="blue"
+                  onClick={handlePayRent}
+                >
+                  Payer le loyer
                 </Button>
               </>
             ) : (

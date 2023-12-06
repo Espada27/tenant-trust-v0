@@ -4,7 +4,7 @@ const nextConfig = {
     config.externals.push("pino-pretty");
     return config;
   },
-  reactStrictMode: true,
+  reactStrictMode: false,
 };
 
 module.exports = nextConfig;
