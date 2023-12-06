@@ -14,6 +14,11 @@ import {
   NumberInputStepper,
   NumberIncrementStepper,
   NumberDecrementStepper,
+  HStack,
+  Box,
+  CircularProgress,
+  CircularProgressLabel,
+  Spacer,
 } from "@chakra-ui/react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -21,18 +26,23 @@ import { useAccount } from "wagmi";
 import useStaking from "../hooks/useStaking";
 import useStakingToken from "../hooks/useStakingToken";
 import useTenantTrust from "../hooks/useTenantTrust";
+import useRewardToken from "../hooks/useRewardToken";
 export default function RentCard({ rent }) {
   const { address, isConnected } = useAccount();
-  const { getTotalSupply, stake } = useStaking(rent.stakingContract);
+  const { getTotalSupply, stake, isStakingFull, getTotalRewards } = useStaking(
+    rent.stakingContract
+  );
   const { increaseAllowance, allowance } = useStakingToken(
     rent.stakingContract
   );
-  const { approveRent, startRentContract } = useTenantTrust();
+  const { approveRent, startRentContract, getInterestRate } = useTenantTrust();
+  const { transferTo, isRewardOwner } = useRewardToken();
 
   const isLandlord = address == rent.landlordAddress;
   const isTenant = address == rent.tenantAddress;
   const [currentDeposit, setCurrentDeposit] = useState(0);
   const [stakingAmount, setStakingAmount] = useState(0);
+  const [stakingFull, setStakingFull] = useState(false);
 
   useEffect(() => {
     const getCurrentDeposit = async () => {
@@ -44,6 +54,11 @@ export default function RentCard({ rent }) {
         console.log("Error while getting the total supplu", error);
       }
     };
+
+    const getStakingFull = async () => {
+      setStakingFull(await isStakingFull());
+    };
+    getStakingFull();
     getCurrentDeposit();
   }, []);
 
@@ -64,15 +79,16 @@ export default function RentCard({ rent }) {
     setStakingAmount(Math.floor(amount));
   };
 
-  //TODO DELETE
-  const getStakingDetails = async () => {
-    try {
-      console.log("Target supply : ", rent.rentalDeposit);
-      console.log("Current supply : ", await getTotalSupply());
-      await allowance(stakingAmount);
-    } catch (error) {
-      console.log("Error while staking", error);
+  //Owner function DEMO ONLY
+  const prepareRewards = async () => {
+    if (!stakingFull) {
+      return;
     }
+    await transferTo(
+      rent.stakingContract,
+      Number(rent.rentalDeposit / 10n ** 18n) *
+        ((await getInterestRate()) / 10000)
+    );
   };
 
   const startContract = async () => {
@@ -97,8 +113,8 @@ export default function RentCard({ rent }) {
       overflow="hidden"
       variant="outline"
       size="sm"
-      justify=""
-      w={"100%"}
+      bg={"gray.100"}
+      m={1}
     >
       <Image
         objectFit="cover"
@@ -125,9 +141,9 @@ export default function RentCard({ rent }) {
             Date de création du contrat : {new Date().toLocaleDateString()}
           </Text>
           <Text>
-            Caution requise : {Number(rent.rentalDeposit) * 10 ** -18}
+            Caution requise : {Number(rent.rentalDeposit) * 10 ** -18} USDC
           </Text>
-          <Text>Caution actuelle : {currentDeposit}</Text>
+          <Text>Caution actuelle : {currentDeposit} USDC</Text>
 
           <Text>
             Bailleur :{" "}
@@ -155,62 +171,73 @@ export default function RentCard({ rent }) {
           </Text>
         </CardBody>
 
-        <CardFooter justify="space-between">
-          {isLandlord || isTenant ? (
-            <Tag size="sm">
-              {isLandlord ? "Vous êtes le bailleur" : "Vous êtes le locataire"}
-            </Tag>
-          ) : (
-            <></>
-          )}
+        <CardFooter>
+          <HStack w={"100%"}>
+            <CircularProgress value={40} color="green.400">
+              <CircularProgressLabel>40%</CircularProgressLabel>
+            </CircularProgress>
+            <Spacer />
 
-          {isLandlord || isTenant ? (
+            {isLandlord || isTenant ? (
+              <Button
+                variant="solid"
+                colorScheme="orange"
+                isDisabled={
+                  isLandlord ? rent.landlordApproval : rent.tenantApproval
+                }
+                onClick={approveContract}
+              >
+                Approuver le contrat
+              </Button>
+            ) : (
+              <></>
+            )}
+            {isLandlord &&
+            rent.landlordApproval &&
+            rent.tenantApproval &&
+            rent.startTime == 0 ? (
+              <Button
+                variant="solid"
+                colorScheme="orange"
+                onClick={startContract}
+              >
+                Démarrer le contrat
+              </Button>
+            ) : (
+              <></>
+            )}
+            {rent.startTime == 0 && isRewardOwner ? (
+              <Button
+                variant="solid"
+                colorScheme="orange"
+                onClick={prepareRewards}
+              >
+                Transférer les rewards
+              </Button>
+            ) : (
+              <></>
+            )}
+            <NumberInput
+              w={"10%"}
+              min={0}
+              value={stakingAmount}
+              onChange={(value) => handleStakingAmount(value)}
+            >
+              <NumberInputField />
+              <NumberInputStepper>
+                <NumberIncrementStepper />
+                <NumberDecrementStepper />
+              </NumberInputStepper>
+            </NumberInput>
             <Button
               variant="solid"
               colorScheme="orange"
-              isDisabled={
-                isLandlord ? rent.landlordApproval : rent.tenantApproval
-              }
-              onClick={approveContract}
+              isDisabled={stakingAmount < 1}
+              onClick={handleStake}
             >
-              Approuver le contrat
+              Stake
             </Button>
-          ) : (
-            <></>
-          )}
-          {isLandlord &&
-          rent.landlordApproval &&
-          rent.tenantApproval &&
-          rent.startTime == 0 ? (
-            <Button
-              variant="solid"
-              colorScheme="orange"
-              onClick={startContract}
-            >
-              Démarrer le contrat
-            </Button>
-          ) : (
-            <></>
-          )}
-          <NumberInput
-            min={0}
-            value={stakingAmount}
-            onChange={(value) => handleStakingAmount(value)}
-          >
-            <NumberInputField />
-            <NumberInputStepper>
-              <NumberIncrementStepper />
-              <NumberDecrementStepper />
-            </NumberInputStepper>
-          </NumberInput>
-          <Button
-            variant="solid"
-            colorScheme="orange"
-            isDisabled={stakingAmount < 1}
-            onClick={handleStake}
-          >
-            Stake
-          </Button>
+          </HStack>
         </CardFooter>
       </Stack>
     </Card>

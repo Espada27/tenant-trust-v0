@@ -62,6 +62,19 @@ const useStaking = (stakingAddress) => {
     }
   };
 
+  const isStakingFull = async () => {
+    try {
+      const data = await readContract({
+        address: stakingAddress,
+        abi: STAKING_ABI,
+        functionName: "isStakingFull",
+      });
+      return data;
+    } catch (err) {
+      console.error("Error while fetching the rent:", err.message);
+    }
+  };
+
   useEffect(() => {
     checkIfOwner();
   }, [address, isConnected]);
@@ -69,6 +82,7 @@ const useStaking = (stakingAddress) => {
   return {
     stake,
     getTotalSupply,
+    isStakingFull,
     isOwner,
   };
 };

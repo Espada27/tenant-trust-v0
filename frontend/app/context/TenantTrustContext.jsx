@@ -17,106 +17,46 @@ export const DataProvider = ({ children }) => {
   const { getRent } = useTenantTrust();
   const [rentsAsLandlord, setRentsAsLandlord] = useState([]);
   const [rentsAsTenant, setRentsAsTenant] = useState([]);
+  const [rentsAsOther, setRentsAsOther] = useState([]);
 
-  /*useContractEvent({
-    address: TENANT_TRUST_ADDRESS,
-    abi: TENANT_TRUST_ABI,
-    eventName: "Voted",
-    listener: () => {
-      setVoteUpdateTrigger((prev) => !prev);
-    },
-  });
-
-  useEffect(() => {
-    const fetchUpdatedProposals = async () => {
-      try {
-        const updatedProposals = await getProposals(proposalIds);
-        setProposals(updatedProposals);
-      } catch (error) {
-        console.error(
-          "Erreur lors de la récupération des propositions:",
-          error
-        );
-      }
-    };
-
-    if (proposalIds.length > 0) {
-      fetchUpdatedProposals();
-    }
-  }, [voteUpdateTrigger, proposalIds]);
-
-  //Get past proposals with the received Ids
-  useEffect(() => {
-    const getPastProposals = async () => {
-      if (isRegistered) {
-        setProposals(await getProposals(proposalIds));
-      } else {
-        setProposals([]);
-      }
-    };
-    getPastProposals();
-  }, [isRegistered]);
-*/
-  //Get rent contract where the connected address is the landlord
-  useEffect(() => {
-    if (!address) {
-      setRentsAsLandlord([]);
-      return;
-    }
-    const getLandlordRents = async () => {
-      const rentLogs = await viemPublicClient.getLogs({
-        address: TENANT_TRUST_ADDRESS,
-        event: parseAbiItem(
-          "event ContractCreated(address indexed tenant, address indexed landlord)"
-        ),
-        fromBlock: 0n,
-        args: {
-          landlord: address,
-        },
-      });
-
-      const realRents = [];
-      for (const log of rentLogs) {
-        const realRent = await getRent(log.args.landlord, log.args.tenant);
-        realRents.push(realRent);
-      }
-      setRentsAsLandlord(realRents);
-    };
-
-    getLandlordRents();
-  }, [address]);
-
-  //Get rent contract where the connected address is the tenant
   useEffect(() => {
     if (!address) {
       setRentsAsTenant([]);
       return;
     }
-    const getTenantRents = async () => {
+    const getRents = async () => {
       const rentLogs = await viemPublicClient.getLogs({
         address: TENANT_TRUST_ADDRESS,
         event: parseAbiItem(
           "event ContractCreated(address indexed tenant, address indexed landlord)"
         ),
         fromBlock: 0n,
-        args: {
-          tenant: address,
-        },
       });
 
-      const realRents = [];
+      const landlordRents = [];
+      const tenantRents = [];
+      const otherRents = [];
+
       for (const log of rentLogs) {
         const realRent = await getRent(log.args.landlord, log.args.tenant);
-        realRents.push(realRent);
+        address == log.args.landlord
+          ? landlordRents.push(realRent)
+          : address == log.args.tenant
+          ? tenantRents.push(realRent)
+          : otherRents.push(realRent);
       }
-      setRentsAsTenant(realRents);
+      setRentsAsLandlord(landlordRents);
+      setRentsAsTenant(tenantRents);
+      setRentsAsOther(otherRents);
     };
 
-    getTenantRents();
+    getRents();
   }, [address]);
 
   return (
-    <DataContext.Provider value={{ address, rentsAsLandlord, rentsAsTenant }}>
+    <DataContext.Provider
+      value={{ address, rentsAsLandlord, rentsAsTenant, rentsAsOther }}
+    >
       {children}
     </DataContext.Provider>
   );

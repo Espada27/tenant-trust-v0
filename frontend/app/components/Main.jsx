@@ -13,17 +13,12 @@ export default function Main() {
       <Nav />
       <Flex
         flex="1"
-        marginTop="5"
+        marginTop="2"
         marginBottom="5"
         marginRight="5"
         marginLeft="5"
       >
-        <VStack
-          divider={<StackDivider borderColor="gray.200" />}
-          spacing={2}
-          align="stretch"
-          minW={"100%"}
-        >
+        <VStack divider={<StackDivider borderColor="gray.200" />} minW={"100%"}>
           <CreateRent />
           <RentCardList />
         </VStack>

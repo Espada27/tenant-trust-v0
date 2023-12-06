@@ -126,6 +126,20 @@ const useTenantTrust = () => {
     }
   };
 
+  const getInterestRate = async () => {
+    try {
+      const data = await readContract({
+        address: TENANT_TRUST_ADDRESS,
+        abi: TENANT_TRUST_ABI,
+        functionName: "interestBps",
+      });
+      console.log("Interest BPS = ", data);
+      return Number(data);
+    } catch (err) {
+      console.error("Error while fetching the rent:", err.message);
+    }
+  };
+
   useEffect(() => {
     checkIfOwner();
   }, [address, isConnected]);
@@ -134,6 +148,7 @@ const useTenantTrust = () => {
     createRentContract,
     approveRent,
     startRentContract,
+    getInterestRate,
     getRent,
     isOwner,
   };
