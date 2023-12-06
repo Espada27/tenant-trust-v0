@@ -37,6 +37,10 @@ const useRewardToken = () => {
   };
 
   const checkIfOwner = async () => {
+    if (!address) {
+      setIsRewardOwner(false);
+      return;
+    }
     try {
       const data = await readContract({
         address: TENANT_TRUST_TOKEN_ADDRESS,

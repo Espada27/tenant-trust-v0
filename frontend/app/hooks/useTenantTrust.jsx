@@ -10,6 +10,7 @@ import {
 import { TENANT_TRUST_ABI, TENANT_TRUST_ADDRESS } from "../constants/constant";
 import { useAccount } from "wagmi";
 import { isAddress } from "viem";
+import { useToast } from "@chakra-ui/react";
 //import useToast from "./useToast";
 const prepareRentDataWrite = (rent) => {
   return [
@@ -23,25 +24,50 @@ const prepareRentDataWrite = (rent) => {
 const rentArrayToObject = (rent, landlordAddress, tenantAddress) => {
   return {
     stakingContract: rent[0],
-    startTime: rent[1],
-    duration: rent[2],
+    startTime: Number(rent[1]),
+    duration: Number(rent[2]),
     rentRate: rent[3],
     rentFees: rent[4],
-    alreadyPaid: rent[5],
-    rentalDeposit: rent[6],
+    alreadyPaid: bigIntToNumber(rent[5]),
+    rentalDeposit: bigIntToNumber(rent[6]),
     leaseUri: rent[7],
     landlordApproval: rent[8],
     tenantApproval: rent[9],
-    creationTime: rent[10],
+    creationTime: Number(rent[10]),
     landlordAddress,
     tenantAddress,
   };
 };
 
+const bigIntToNumber = (bigInt) => {
+  return Number(bigInt / 10n ** 18n);
+};
+
 const useTenantTrust = () => {
   const [workflowStatus, setWorkflowStatus] = useState(5);
   const [isOwner, setIsOwner] = useState(false);
+  const [rentDuration, setRentDuration] = useState(0);
   const { address, isConnected } = useAccount();
+  const toast = useToast();
+  const successToast = (title, description) => {
+    toast({
+      title,
+      description,
+      status: "success",
+      duration: 3000,
+      isClosable: true,
+    });
+  };
+
+  const errorToast = (title, description) => {
+    toast({
+      title,
+      description,
+      status: "error",
+      duration: 3000,
+      isClosable: true,
+    });
+  };
 
   const createRentContract = async (rent) => {
     console.log("Contract about to be created : ", rent);
@@ -56,7 +82,9 @@ const useTenantTrust = () => {
       });
       const { hash } = await writeContract(request);
       await waitForTransaction({ hash });
+      successToast("Contrat créé");
     } catch (error) {
+      errorToast("Erreur", "Erreur lors de la création du contrat");
       console.error("Error while creating a rent contract:", error);
     }
   };
@@ -74,8 +102,9 @@ const useTenantTrust = () => {
       });
       const { hash } = await writeContract(request);
       await waitForTransaction({ hash });
-      console.log("Contract successfully approved");
+      successToast("Contrat approuvé");
     } catch (error) {
+      errorToast("Erreur", "Erreur lors de l'approbation du contrat");
       console.error("Error while creating a rent contract:", error);
     }
   };
@@ -94,12 +123,18 @@ const useTenantTrust = () => {
       const { hash } = await writeContract(request);
       await waitForTransaction({ hash });
       console.log("Contract successfully started");
+      successToast("Contrat démarré");
     } catch (error) {
+      errorToast("Erreur", "Erreur lors du démarrage du contrat");
       console.error("Error while starting the rent contract:", error);
     }
   };
 
   const checkIfOwner = async () => {
+    if (!address) {
+      setIsOwner(false);
+      return;
+    }
     try {
       const data = await readContract({
         address: TENANT_TRUST_ADDRESS,
@@ -107,6 +142,20 @@ const useTenantTrust = () => {
         functionName: "owner",
       });
       setIsOwner(data === address);
+    } catch (err) {
+      console.error("Error in checkIfOwner:", err.message);
+    }
+  };
+
+  const getRentDuration = async () => {
+    try {
+      const data = await readContract({
+        address: TENANT_TRUST_ADDRESS,
+        abi: TENANT_TRUST_ABI,
+        functionName: "rentDuration",
+      });
+      console.log("Rent duration = ", data);
+      setRentDuration(bigIntToNumber(data));
     } catch (err) {
       console.error("Error in checkIfOwner:", err.message);
     }
@@ -151,6 +200,7 @@ const useTenantTrust = () => {
     getInterestRate,
     getRent,
     isOwner,
+    rentDuration,
   };
 };
 

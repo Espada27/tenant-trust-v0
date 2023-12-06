@@ -40,6 +40,7 @@ export default function CreateRent() {
   const createRent = async () => {
     try {
       await createRentContract(rent);
+      onClose();
     } catch (error) {
       console.log("Error while creating a rent", error);
     }
@@ -60,6 +61,7 @@ export default function CreateRent() {
         isDisabled={!isConnected}
         colorScheme="teal"
         onClick={onOpen}
+        w={"100%"}
       >
         Créer un contrat de location
       </Button>

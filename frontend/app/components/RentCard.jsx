@@ -27,31 +27,48 @@ import useStaking from "../hooks/useStaking";
 import useStakingToken from "../hooks/useStakingToken";
 import useTenantTrust from "../hooks/useTenantTrust";
 import useRewardToken from "../hooks/useRewardToken";
+import img1 from "../../public/images/img1.jpeg";
+import img2 from "../../public/images/img2.jpeg";
+import img3 from "../../public/images/img3.jpeg";
+import img4 from "../../public/images/img4.jpeg";
+
 export default function RentCard({ rent }) {
-  const { address, isConnected } = useAccount();
-  const { getTotalSupply, stake, isStakingFull, getTotalRewards } = useStaking(
-    rent.stakingContract
-  );
+  const { address } = useAccount();
+  const { getTotalSupply, stake, isStakingFull, withdraw, earned, hasStaked } =
+    useStaking(rent.stakingContract);
   const { increaseAllowance, allowance } = useStakingToken(
     rent.stakingContract
   );
-  const { approveRent, startRentContract, getInterestRate } = useTenantTrust();
+  const { approveRent, startRentContract, getInterestRate, rentDuration } =
+    useTenantTrust();
   const { transferTo, isRewardOwner } = useRewardToken();
 
   const isLandlord = address == rent.landlordAddress;
   const isTenant = address == rent.tenantAddress;
   const [currentDeposit, setCurrentDeposit] = useState(0);
-  const [stakingAmount, setStakingAmount] = useState(0);
+  const [inputAmount, setInputAmount] = useState(0);
   const [stakingFull, setStakingFull] = useState(false);
+  const [stakingPercentage, setStakingPercentage] = useState(0);
+  const [earnedAmount, setEarnedAmount] = useState(0);
+  const [earnAmountInterval, setEarnedAmountInterval] = useState();
+  const [userStaked, setUserStaked] = useState();
+
+  //Demo only
+  const randomImageSrc = [img1.src, img2.src, img3.src, img4.src][
+    rent.creationTime % 4
+  ];
 
   useEffect(() => {
     const getCurrentDeposit = async () => {
       try {
-        const data = await getTotalSupply();
-        console.log("caution convertie = ", data, data / 10n ** 18n);
-        setCurrentDeposit(Number(data / 10n ** 18n));
+        const totalSupply = await getTotalSupply();
+
+        setCurrentDeposit(totalSupply);
+        setStakingPercentage(
+          Math.floor((totalSupply / rent.rentalDeposit) * 100)
+        );
       } catch (error) {
-        console.log("Error while getting the total supplu", error);
+        console.log("Error while getting the total supply", error);
       }
     };
 
@@ -60,34 +77,71 @@ export default function RentCard({ rent }) {
     };
     getStakingFull();
     getCurrentDeposit();
+
+    const initInterval = async () => {
+      const hasUserStaked = await hasStaked();
+      setUserStaked(hasUserStaked);
+      if (!hasUserStaked) {
+        return;
+      }
+      const intervalId = setInterval(async () => {
+        let newValue = await earned();
+        newValue = newValue.toString().split("");
+        newValue.splice(2, 0, ".");
+        setEarnedAmount(newValue.join(""));
+      }, 5000);
+      setEarnedAmountInterval(intervalId);
+    };
+
+    initInterval();
+
+    return () => {
+      clearInterval(earnAmountInterval);
+      setEarnedAmountInterval(null);
+    };
   }, []);
+
+  const updateCurrentStakingAmount = async (inputAmount) => {
+    setStakingPercentage(
+      Math.floor(((currentDeposit + inputAmount) / rent.rentalDeposit) * 100)
+    );
+
+    setCurrentDeposit((prev) => prev + inputAmount);
+  };
 
   const handleStake = async () => {
     try {
-      console.log(await allowance(), stakingAmount);
-      if ((await allowance()) <= stakingAmount) {
+      console.log(await allowance(), inputAmount);
+      if ((await allowance()) <= inputAmount) {
         console.log("Increase allowance needed");
-        await increaseAllowance(stakingAmount);
+        await increaseAllowance(inputAmount);
       }
-      await stake(stakingAmount);
+      await stake(inputAmount);
+      updateCurrentStakingAmount(inputAmount);
     } catch (error) {
       console.log("Error while staking", error);
     }
   };
 
-  const handleStakingAmount = (amount) => {
-    setStakingAmount(Math.floor(amount));
+  const handleWithdraw = async () => {
+    try {
+      console.log("Amount =", inputAmount);
+      await withdraw(inputAmount);
+      updateCurrentStakingAmount(-inputAmount);
+    } catch (error) {
+      console.log("Error while staking", error);
+    }
+  };
+
+  const handleInputAmount = (amount) => {
+    setInputAmount(Math.floor(amount));
   };
 
   //Owner function DEMO ONLY
   const prepareRewards = async () => {
-    if (!stakingFull) {
-      return;
-    }
     await transferTo(
       rent.stakingContract,
-      Number(rent.rentalDeposit / 10n ** 18n) *
-        ((await getInterestRate()) / 10000)
+      rent.rentalDeposit * ((await getInterestRate()) / 10000)
     );
   };
 
@@ -99,7 +153,7 @@ export default function RentCard({ rent }) {
     }
   };
 
-  const approveContract = async () => {
+  const approveContract = async (approver) => {
     try {
       await approveRent(rent);
     } catch (error) {
@@ -119,8 +173,7 @@ export default function RentCard({ rent }) {
       <Image
         objectFit="cover"
         maxW={{ base: "100%", sm: "200px" }}
-        src="https://images.unsplash.com/photo-1667489022797-ab608913feeb?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxlZGl0b3JpYWwtZmVlZHw5fHx8ZW58MHx8fHw%3D&auto=format&fit=crop&w=800&q=60"
-        alt="Caffe Latte"
+        src={randomImageSrc}
       />
 
       <Stack w={"100%"}>
@@ -140,10 +193,13 @@ export default function RentCard({ rent }) {
           <Text>
             Date de création du contrat : {new Date().toLocaleDateString()}
           </Text>
-          <Text>
-            Caution requise : {Number(rent.rentalDeposit) * 10 ** -18} USDC
-          </Text>
+          <Text>Caution requise : {rent.rentalDeposit} USDC</Text>
           <Text>Caution actuelle : {currentDeposit} USDC</Text>
+          {earnedAmount > 0 ? (
+            <Text>Récompense de staking : {earnedAmount} TTT</Text>
+          ) : (
+            <></>
+          )}
 
           <Text>
             Bailleur :{" "}
@@ -173,8 +229,10 @@ export default function RentCard({ rent }) {
 
         <CardFooter>
           <HStack w={"100%"}>
-            <CircularProgress value={40} color="green.400">
-              <CircularProgressLabel>40%</CircularProgressLabel>
+            <CircularProgress value={stakingPercentage} color="green.400">
+              <CircularProgressLabel>
+                {stakingPercentage}%
+              </CircularProgressLabel>
             </CircularProgress>
             <Spacer />
 
@@ -212,31 +270,46 @@ export default function RentCard({ rent }) {
                 colorScheme="orange"
                 onClick={prepareRewards}
               >
-                Transférer les rewards
+                Init rewards
               </Button>
             ) : (
               <></>
             )}
-            <NumberInput
-              w={"10%"}
-              min={0}
-              value={stakingAmount}
-              onChange={(value) => handleStakingAmount(value)}
-            >
-              <NumberInputField />
-              <NumberInputStepper>
-                <NumberIncrementStepper />
-                <NumberDecrementStepper />
-              </NumberInputStepper>
-            </NumberInput>
-            <Button
-              variant="solid"
-              colorScheme="orange"
-              isDisabled={stakingAmount < 1}
-              onClick={handleStake}
-            >
-              Stake
-            </Button>
+            {rent.startTime == 0 ? (
+              <>
+                <NumberInput
+                  w={"15%"}
+                  min={0}
+                  value={inputAmount}
+                  onChange={(value) => handleInputAmount(value)}
+                >
+                  <NumberInputField />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
+
+                <Button
+                  variant="solid"
+                  colorScheme="orange"
+                  isDisabled={inputAmount < 1}
+                  onClick={handleStake}
+                >
+                  Stake
+                </Button>
+                <Button
+                  variant="solid"
+                  colorScheme="orange"
+                  isDisabled={inputAmount < 1}
+                  onClick={handleWithdraw}
+                >
+                  Withdraw
+                </Button>
+              </>
+            ) : (
+              <></>
+            )}
           </HStack>
         </CardFooter>
       </Stack>

@@ -17,8 +17,9 @@ export default function Main() {
         marginBottom="5"
         marginRight="5"
         marginLeft="5"
+        justifyContent={"center"}
       >
-        <VStack divider={<StackDivider borderColor="gray.200" />} minW={"100%"}>
+        <VStack divider={<StackDivider borderColor="gray.200" />} minW={"50%"}>
           <CreateRent />
           <RentCardList />
         </VStack>

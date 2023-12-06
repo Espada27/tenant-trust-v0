@@ -13,6 +13,10 @@ import {
 } from "../constants/constant";
 import { useAccount } from "wagmi";
 
+const bigIntToNumber = (bigInt) => {
+  return Number(bigInt / 10n ** 18n);
+};
+
 const useStakingToken = (stakingAddress) => {
   const [isOwner, setIsOwner] = useState(false);
   const { address, isConnected } = useAccount();
@@ -37,10 +41,14 @@ const useStakingToken = (stakingAddress) => {
   };
 
   const checkIfOwner = async () => {
+    if (!address) {
+      setIsOwner(false);
+      return;
+    }
     try {
       const data = await readContract({
-        address: TENANT_TRUST_ADDRESS,
-        abi: TENANT_TRUST_ABI,
+        address: STAKING_TOKEN_ADDRESS,
+        abi: STAKING_TOKEN_ABI,
         functionName: "owner",
       });
       setIsOwner(data === address);
@@ -58,7 +66,7 @@ const useStakingToken = (stakingAddress) => {
         args: [address, stakingAddress],
       });
       console.log("Get allowance : ", data);
-      return data;
+      return bigIntToNumber(data);
     } catch (err) {
       console.error("Error while fetching the rent:", err.message);
     }

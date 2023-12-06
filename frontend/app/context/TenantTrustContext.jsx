@@ -21,7 +21,9 @@ export const DataProvider = ({ children }) => {
 
   useEffect(() => {
     if (!address) {
+      setRentsAsLandlord([]);
       setRentsAsTenant([]);
+      setRentsAsOther([]);
       return;
     }
     const getRents = async () => {

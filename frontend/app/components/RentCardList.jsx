@@ -11,11 +11,12 @@ export default function RentCardList() {
   return (
     <>
       <VStack
+        w={"100%"}
         divider={
           <StackDivider borderColor="gray.200" align="stretch" w={"100%"} />
         }
       >
-        <Box p={0}>
+        <Box p={0} w={"100%"}>
           <Heading size="lg" textAlign={"center"}>
             Bailleur
           </Heading>
