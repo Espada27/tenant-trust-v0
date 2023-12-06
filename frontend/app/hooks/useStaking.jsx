@@ -41,7 +41,6 @@ const useStaking = (stakingAddress) => {
   };
 
   const withdraw = async (withdrawAmount) => {
-    console.log(withdrawAmount);
     const walletClient = await getWalletClient();
     try {
       const bigIntAmount = BigInt(withdrawAmount) * 10n ** 18n;
@@ -58,6 +57,24 @@ const useStaking = (stakingAddress) => {
       console.log("Successfully withdrawn");
     } catch (error) {
       console.error("Error while withdrawing:", error);
+      throw error;
+    }
+  };
+
+  const claimRewards = async () => {
+    const walletClient = await getWalletClient();
+    try {
+      const { request } = await prepareWriteContract({
+        address: stakingAddress,
+        abi: STAKING_ABI,
+        functionName: "claim",
+        account: walletClient.account,
+      });
+      const { hash } = await writeContract(request);
+      await waitForTransaction({ hash });
+      console.log("Successfully claimed");
+    } catch (error) {
+      console.error("Error while claiming:", error);
       throw error;
     }
   };
@@ -155,6 +172,7 @@ const useStaking = (stakingAddress) => {
     getTotalSupply,
     isStakingFull,
     hasStaked,
+    claimRewards,
     userStakedAmount,
     isOwner,
   };

@@ -31,11 +31,20 @@ import img1 from "../../public/images/img1.jpeg";
 import img2 from "../../public/images/img2.jpeg";
 import img3 from "../../public/images/img3.jpeg";
 import img4 from "../../public/images/img4.jpeg";
+import { cropAddress } from "../utils/addressUtils";
 
 export default function RentCard({ rent }) {
   const { address } = useAccount();
-  const { getTotalSupply, stake, isStakingFull, withdraw, earned, hasStaked } =
-    useStaking(rent.stakingContract);
+  const {
+    getTotalSupply,
+    stake,
+    isStakingFull,
+    withdraw,
+    earned,
+    hasStaked,
+    claimRewards,
+    userStakedAmount,
+  } = useStaking(rent.stakingContract);
   const { increaseAllowance, allowance } = useStakingToken(
     rent.stakingContract
   );
@@ -46,7 +55,7 @@ export default function RentCard({ rent }) {
   const isLandlord = address == rent.landlordAddress;
   const isTenant = address == rent.tenantAddress;
   const [currentDeposit, setCurrentDeposit] = useState(0);
-  const [inputAmount, setInputAmount] = useState(0);
+  const [inputAmount, setInputAmount] = useState(100);
   const [stakingFull, setStakingFull] = useState(false);
   const [stakingPercentage, setStakingPercentage] = useState(0);
   const [earnedAmount, setEarnedAmount] = useState(0);
@@ -79,11 +88,12 @@ export default function RentCard({ rent }) {
     getCurrentDeposit();
 
     const initInterval = async () => {
-      const hasUserStaked = await hasStaked();
-      setUserStaked(hasUserStaked);
-      if (!hasUserStaked) {
+      const stakedAmount = await userStakedAmount();
+      setUserStaked(stakedAmount);
+      if (!stakedAmount) {
         return;
       }
+
       const intervalId = setInterval(async () => {
         let newValue = await earned();
         newValue = newValue.toString().split("");
@@ -187,7 +197,7 @@ export default function RentCard({ rent }) {
               }
               isExternal
             >
-              {rent.stakingContract} <ExternalLinkIcon mx="2px" />
+              {cropAddress(rent.stakingContract)} <ExternalLinkIcon mx="2px" />
             </Link>
           </Text>
           <Text>
@@ -195,8 +205,19 @@ export default function RentCard({ rent }) {
           </Text>
           <Text>Caution requise : {rent.rentalDeposit} USDC</Text>
           <Text>Caution actuelle : {currentDeposit} USDC</Text>
+          <Text>Votre contribution : {userStaked} USDC</Text>
           {earnedAmount > 0 ? (
-            <Text>Récompense de staking : {earnedAmount} TTT</Text>
+            <HStack w={"100%"}>
+              <Text>Récompense de staking : {earnedAmount} TTT</Text>
+              <Button
+                size="xs"
+                variant="solid"
+                colorScheme="blue"
+                onClick={claimRewards}
+              >
+                Claim
+              </Button>
+            </HStack>
           ) : (
             <></>
           )}
@@ -210,7 +231,7 @@ export default function RentCard({ rent }) {
               }
               isExternal
             >
-              {rent.landlordAddress} <ExternalLinkIcon mx="2px" />
+              {cropAddress(rent.landlordAddress)} <ExternalLinkIcon mx="2px" />
             </Link>
           </Text>
           <Text>
@@ -222,9 +243,17 @@ export default function RentCard({ rent }) {
               }
               isExternal
             >
-              {rent.tenantAddress} <ExternalLinkIcon mx="2px" />
+              {cropAddress(rent.tenantAddress)} <ExternalLinkIcon mx="2px" />
             </Link>
           </Text>
+          {rent.startTime > 0 ? (
+            <Text>
+              Contrat démarré le :{" "}
+              {new Date(rent.startTime).toLocaleDateString()}
+            </Text>
+          ) : (
+            <></>
+          )}
         </CardBody>
 
         <CardFooter>
@@ -236,13 +265,11 @@ export default function RentCard({ rent }) {
             </CircularProgress>
             <Spacer />
 
-            {isLandlord || isTenant ? (
+            {(isLandlord && !rent.landlordApproval) ||
+            (isTenant && !rent.tenantApproval) ? (
               <Button
                 variant="solid"
                 colorScheme="orange"
-                isDisabled={
-                  isLandlord ? rent.landlordApproval : rent.tenantApproval
-                }
                 onClick={approveContract}
               >
                 Approuver le contrat

@@ -44,6 +44,10 @@ async function main() {
   await tenantTrust
     .connect(bob)
     .createRentContract(owner, monthlyRent * 2n, rentalDeposit * 2n, leaseUrl);
+
+  //Seed other accounts
+  await stakingToken.transfer(alice, 1_000_000_000n * 10n ** 18n);
+  await stakingToken.transfer(bob, 1_000_000_000n * 10n ** 18n);
 }
 
 // We recommend this pattern to be able to use async/await everywhere

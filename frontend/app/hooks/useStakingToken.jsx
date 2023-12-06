@@ -72,6 +72,20 @@ const useStakingToken = (stakingAddress) => {
     }
   };
 
+  const getBalance = async () => {
+    try {
+      const data = await readContract({
+        address: STAKING_TOKEN_ADDRESS,
+        abi: STAKING_TOKEN_ABI,
+        functionName: "balanceOf",
+        args: [address],
+      });
+      return bigIntToNumber(data);
+    } catch (err) {
+      console.error("Error while fetching the balance:", err.message);
+    }
+  };
+
   useEffect(() => {
     checkIfOwner();
   }, [address, isConnected]);
@@ -80,6 +94,7 @@ const useStakingToken = (stakingAddress) => {
     increaseAllowance,
     allowance,
     isOwner,
+    getBalance,
   };
 };
 

@@ -13,6 +13,10 @@ import {
 } from "../constants/constant";
 import { useAccount } from "wagmi";
 
+const bigIntToNumber = (bigInt) => {
+  return Number(bigInt / 10n ** 18n);
+};
+
 const useRewardToken = () => {
   const [isRewardOwner, setIsRewardOwner] = useState(false);
   const { address, isConnected } = useAccount();
@@ -68,6 +72,20 @@ const useRewardToken = () => {
     }
   };
 
+  const getBalance = async () => {
+    try {
+      const data = await readContract({
+        address: TENANT_TRUST_TOKEN_ADDRESS,
+        abi: TENANT_TRUST_TOKEN_ABI,
+        functionName: "balanceOf",
+        args: [address],
+      });
+      return bigIntToNumber(data);
+    } catch (err) {
+      console.error("Error while fetching the balance:", err.message);
+    }
+  };
+
   useEffect(() => {
     checkIfOwner();
   }, [address, isConnected]);
@@ -75,6 +93,7 @@ const useRewardToken = () => {
   return {
     transferTo,
     isRewardOwner,
+    getBalance,
   };
 };
 

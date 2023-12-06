@@ -24,7 +24,7 @@ const prepareRentDataWrite = (rent) => {
 const rentArrayToObject = (rent, landlordAddress, tenantAddress) => {
   return {
     stakingContract: rent[0],
-    startTime: Number(rent[1]),
+    startTime: Number(rent[1]) * 1000,
     duration: Number(rent[2]),
     rentRate: rent[3],
     rentFees: rent[4],
