@@ -243,7 +243,7 @@ export default function RentCard({ rent }) {
                       "https://sepolia.etherscan.io/address/" +
                       rent.stakingContract
                     }
-                    isExternal
+                    isexternal
                   >
                     {cropAddress(rent.stakingContract)}{" "}
                     <ExternalLinkIcon mx="2px" />
@@ -264,7 +264,7 @@ export default function RentCard({ rent }) {
                       "https://sepolia.etherscan.io/address/" +
                       rent.landlordAddress
                     }
-                    isExternal
+                    isexternal
                   >
                     {cropAddress(rent.landlordAddress)}{" "}
                     <ExternalLinkIcon mx="2px" />
@@ -278,7 +278,7 @@ export default function RentCard({ rent }) {
                       "https://sepolia.etherscan.io/address/" +
                       rent.tenantAddress
                     }
-                    isExternal
+                    isexternal
                   >
                     {cropAddress(rent.tenantAddress)}{" "}
                     <ExternalLinkIcon mx="2px" />
