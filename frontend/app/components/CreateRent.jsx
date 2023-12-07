@@ -31,15 +31,16 @@ export default function CreateRent() {
   const { createRentContract } = useTenantTrust();
   //TODO TEST ONLY, REMOVE VALUES
   const [rent, setRent] = useState({
-    tenantPublicKey: "0xcF88ec18Dcd0BF9B602d6211216b4aC0a5Af548a",
+    tenantPublicKey: "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
     monthlyRent: 500,
     rentalDeposit: 6000,
-    leaseUri: "http://toto.com",
+    leaseUri: "http://testurl.com",
   });
 
   const createRent = async () => {
     try {
       await createRentContract(rent);
+
       onClose();
     } catch (error) {
       console.log("Error while creating a rent", error);

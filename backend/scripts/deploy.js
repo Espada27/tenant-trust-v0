@@ -77,7 +77,7 @@ const seed = async (tenantTrustToken, stakingToken, tenantTrust) => {
 };
 
 const mockTime = async () => {
-  setInterval(async () => await time.increase(86400), 1000);
+  setInterval(async () => await time.increase(3600 * 12), 1000);
 };
 
 // We recommend this pattern to be able to use async/await everywhere

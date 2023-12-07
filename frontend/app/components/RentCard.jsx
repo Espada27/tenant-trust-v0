@@ -109,11 +109,14 @@ export default function RentCard({ rent }) {
         return;
       }
 
-      const intervalId = setInterval(async () => {
-        let newValue = await earned();
-        setEarnedAmount(newValue);
-      }, 1000);
-      setEarnedAmountInterval(intervalId);
+      if (rent.startTime + rent.duration < Date.now()) {
+        const intervalId = setInterval(async () => {
+          let newValue = await earned();
+          console.log("loop, earned amount = ", rent);
+          setEarnedAmount(newValue);
+        }, 1000);
+        setEarnedAmountInterval(intervalId);
+      }
     };
 
     initInterval();
@@ -142,13 +145,15 @@ export default function RentCard({ rent }) {
 
   const handleStake = async () => {
     try {
-      console.log(await allowance(), inputAmount);
-      if ((await allowance()) <= inputAmount) {
+      const stakingAllowance = await allowance(rent.stakingContract);
+      console.log("Current allowance = ", stakingAllowance);
+      if (stakingAllowance <= inputAmount) {
         console.log("Increase allowance needed");
-        await increaseAllowance(inputAmount);
+        await increaseAllowance(rent.stakingContract, inputAmount);
       }
       await stake(inputAmount);
       updateCurrentStakingAmount(inputAmount);
+      setUserStaked((prev) => prev + inputAmount);
     } catch (error) {
       console.log("Error while staking", error);
     }
@@ -215,6 +220,14 @@ export default function RentCard({ rent }) {
     }
   };
 
+  const handleClaimRewards = async () => {
+    try {
+      await claimRewards();
+    } catch (error) {
+      console.log("Error while claiming the reward", error);
+    }
+  };
+
   return (
     <Card
       direction={{ base: "column", sm: "row" }}
@@ -243,7 +256,7 @@ export default function RentCard({ rent }) {
                       "https://sepolia.etherscan.io/address/" +
                       rent.stakingContract
                     }
-                    isexternal
+                    isexternal="true"
                   >
                     {cropAddress(rent.stakingContract)}{" "}
                     <ExternalLinkIcon mx="2px" />
@@ -264,7 +277,7 @@ export default function RentCard({ rent }) {
                       "https://sepolia.etherscan.io/address/" +
                       rent.landlordAddress
                     }
-                    isexternal
+                    isexternal="true"
                   >
                     {cropAddress(rent.landlordAddress)}{" "}
                     <ExternalLinkIcon mx="2px" />
@@ -278,7 +291,7 @@ export default function RentCard({ rent }) {
                       "https://sepolia.etherscan.io/address/" +
                       rent.tenantAddress
                     }
-                    isexternal
+                    isexternal="true"
                   >
                     {cropAddress(rent.tenantAddress)}{" "}
                     <ExternalLinkIcon mx="2px" />
@@ -378,7 +391,7 @@ export default function RentCard({ rent }) {
                 <Button
                   variant="solid"
                   colorScheme="orange"
-                  isDisabled={inputAmount < 1}
+                  isDisabled={currentDeposit >= rent.rentalDeposit}
                   onClick={handleStake}
                 >
                   Stake
@@ -403,8 +416,13 @@ export default function RentCard({ rent }) {
               <></>
             )}
             {userStaked && rent.startTime > 0 ? (
-              <Button variant="solid" colorScheme="blue" onClick={claimRewards}>
-                Claim
+              <Button
+                variant="solid"
+                colorScheme="blue"
+                isDisabled={earnedAmount == 0}
+                onClick={handleClaimRewards}
+              >
+                Claim reward
               </Button>
             ) : (
               <></>

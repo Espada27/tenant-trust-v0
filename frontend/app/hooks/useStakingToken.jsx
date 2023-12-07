@@ -68,7 +68,7 @@ const useStakingToken = (stakingAddress) => {
       console.log("Get allowance : ", data);
       return bigIntToNumber(data);
     } catch (err) {
-      console.error("Error while fetching the rent:", err.message);
+      console.error("Error while fetching the allowance:", err.message);
     }
   };
 

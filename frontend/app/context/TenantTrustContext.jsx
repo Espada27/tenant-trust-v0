@@ -19,6 +19,32 @@ export const DataProvider = ({ children }) => {
   const [rentsAsTenant, setRentsAsTenant] = useState([]);
   const [rentsAsOther, setRentsAsOther] = useState([]);
 
+  const initRents = async () => {
+    const rentLogs = await viemPublicClient.getLogs({
+      address: TENANT_TRUST_ADDRESS,
+      event: parseAbiItem(
+        "event ContractCreated(address indexed tenant, address indexed landlord)"
+      ),
+      fromBlock: 0n,
+    });
+
+    const landlordRents = [];
+    const tenantRents = [];
+    const otherRents = [];
+
+    for (const log of rentLogs) {
+      const realRent = await getRent(log.args.landlord, log.args.tenant);
+      address == log.args.landlord
+        ? landlordRents.push(realRent)
+        : address == log.args.tenant
+        ? tenantRents.push(realRent)
+        : otherRents.push(realRent);
+    }
+    setRentsAsLandlord(landlordRents);
+    setRentsAsTenant(tenantRents);
+    setRentsAsOther(otherRents);
+  };
+
   useEffect(() => {
     if (!address) {
       setRentsAsLandlord([]);
@@ -26,34 +52,40 @@ export const DataProvider = ({ children }) => {
       setRentsAsOther([]);
       return;
     }
-    const getRents = async () => {
-      const rentLogs = await viemPublicClient.getLogs({
-        address: TENANT_TRUST_ADDRESS,
-        event: parseAbiItem(
-          "event ContractCreated(address indexed tenant, address indexed landlord)"
-        ),
-        fromBlock: 0n,
-      });
-
-      const landlordRents = [];
-      const tenantRents = [];
-      const otherRents = [];
-
-      for (const log of rentLogs) {
-        const realRent = await getRent(log.args.landlord, log.args.tenant);
-        address == log.args.landlord
-          ? landlordRents.push(realRent)
-          : address == log.args.tenant
-          ? tenantRents.push(realRent)
-          : otherRents.push(realRent);
-      }
-      setRentsAsLandlord(landlordRents);
-      setRentsAsTenant(tenantRents);
-      setRentsAsOther(otherRents);
-    };
-
-    getRents();
+    initRents();
   }, [address]);
+
+  useContractEvent({
+    address: TENANT_TRUST_ADDRESS,
+    abi: TENANT_TRUST_ABI,
+    eventName: "ContractCreated",
+    listener: async (events) => {
+      for (const event of events) {
+        const tenantAddr = event.args.tenant;
+        const landlordAddr = event.args.landlord;
+        const freshRent = await getRent(event.args.landlord, event.args.tenant);
+        if (tenantAddr == address) {
+          if (!isAlreadyPresent(tenantAddr, landlordAddr, rentsAsTenant)) {
+            setRentsAsTenant((prev) => prev.concat(freshRent));
+          }
+        } else if (landlordAddr == address) {
+          if (!isAlreadyPresent(tenantAddr, landlordAddr, rentsAsLandlord)) {
+            setRentsAsLandlord((prev) => prev.concat(freshRent));
+          }
+        } else {
+          if (!isAlreadyPresent(tenantAddr, landlordAddr, rentsAsOther)) {
+            setRentsAsLandlord((prev) => prev.concat(freshRent));
+          }
+        }
+      }
+    },
+  });
+
+  const isAlreadyPresent = (tenant, landlord, rentArray) => {
+    return rentArray.some(
+      (rent) => rent.landlordAddress == landlord && rent.tenantAddress == tenant
+    );
+  };
 
   return (
     <DataContext.Provider

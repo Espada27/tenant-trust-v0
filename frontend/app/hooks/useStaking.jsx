@@ -9,6 +9,7 @@ import {
 } from "@wagmi/core";
 import { STAKING_ABI } from "../constants/constant";
 import { useAccount } from "wagmi";
+import { useToast } from "@chakra-ui/react";
 
 const bigIntToNumber = (bigInt) => {
   return Number(bigInt / 10n ** 18n);
@@ -17,7 +18,26 @@ const bigIntToNumber = (bigInt) => {
 const useStaking = (stakingAddress) => {
   const [isOwner, setIsOwner] = useState(false);
   const { address, isConnected } = useAccount();
-  //const toast = useToast();
+  const toast = useToast();
+  const successToast = (title, description) => {
+    toast({
+      title,
+      description,
+      status: "success",
+      duration: 3000,
+      isClosable: true,
+    });
+  };
+
+  const errorToast = (title, description) => {
+    toast({
+      title,
+      description,
+      status: "error",
+      duration: 3000,
+      isClosable: true,
+    });
+  };
 
   const stake = async (stakingAmount) => {
     const walletClient = await getWalletClient();
@@ -34,6 +54,8 @@ const useStaking = (stakingAddress) => {
       const { hash } = await writeContract(request);
       await waitForTransaction({ hash });
       console.log("Successfully staked");
+      successToast("Dépot réussi !", `Vous avez déposé ${stakingAmount} USDC`);
+      errorToast("Erreur lors du dépot");
     } catch (error) {
       console.error("Error while staking:", error);
       throw error;
@@ -55,7 +77,12 @@ const useStaking = (stakingAddress) => {
       const { hash } = await writeContract(request);
       await waitForTransaction({ hash });
       console.log("Successfully withdrawn");
+      successToast(
+        "Retrait effectué !",
+        `Vous avez retiré ${withdrawAmount} USDC`
+      );
     } catch (error) {
+      errorToast("Erreur lors du retait");
       console.error("Error while withdrawing:", error);
       throw error;
     }
@@ -73,7 +100,9 @@ const useStaking = (stakingAddress) => {
       const { hash } = await writeContract(request);
       await waitForTransaction({ hash });
       console.log("Successfully claimed");
+      successToast("Rewards transférées !");
     } catch (error) {
+      errorToast("Erreur lors du transfert des rewards");
       console.error("Error while claiming:", error);
       throw error;
     }
