@@ -4,6 +4,10 @@ pragma solidity ^0.8.23;
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
+/**
+ * @title Staking
+ * @dev Contract for staking tokens and earning rewards.
+ */
 contract Staking is Ownable {
     using SafeERC20 for IERC20;
 
@@ -38,6 +42,12 @@ contract Staking is Ownable {
     event RewardsDurationUpdated(uint256 newDuration);
     event StakingStopped(address owner);
 
+    /**
+     * @dev Constructor for the Staking contract.
+     * @param _stakingToken Address of the token to be staked.
+     * @param _rewardToken Address of the reward token.
+     * @param _targetSupply Target total amount for staking.
+     */
     constructor(
         IERC20 _stakingToken,
         IERC20 _rewardToken,
@@ -48,6 +58,10 @@ contract Staking is Ownable {
         targetSupply = _targetSupply;
     }
 
+    /**
+     * @dev Modifier to update the reward information.
+     * @param _account The address of the account to update rewards.
+     */
     modifier updateReward(address _account) {
         rewardPerTokenStored = rewardPerToken();
         updatedAt = lastTimeRewardApplicable();
@@ -60,10 +74,18 @@ contract Staking is Ownable {
         _;
     }
 
+    /**
+     * @dev Get the last time when rewards are applicable.
+     * @return Timestamp of the last applicable time.
+     */
     function lastTimeRewardApplicable() public view returns (uint) {
         return _min(finishAt, block.timestamp);
     }
 
+    /**
+     * @dev Get the reward amount to be paid per token.
+     * @return The reward amount per token.
+     */
     function rewardPerToken() public view returns (uint) {
         if (totalSupply == 0) {
             return rewardPerTokenStored;
@@ -75,6 +97,10 @@ contract Staking is Ownable {
             totalSupply;
     }
 
+    /**
+     * @dev Stake tokens to earn rewards.
+     * @param _amount The amount of tokens to stake.
+     */
     function stake(uint _amount) external updateReward(msg.sender) {
         require(_amount > 0, "amount = 0");
         require(totalSupply + _amount <= targetSupply, "cannot stake more");
@@ -84,6 +110,10 @@ contract Staking is Ownable {
         emit Staked(msg.sender, _amount);
     }
 
+    /**
+     * @dev Withdraw staked tokens.
+     * @param _amount The amount of tokens to withdraw.
+     */
     function withdraw(uint _amount) external updateReward(msg.sender) {
         require(_amount > 0, "amount = 0");
         require(
@@ -96,6 +126,10 @@ contract Staking is Ownable {
         emit Withdrawn(msg.sender, _amount);
     }
 
+    /**
+     * @dev Compute the current rewards to be claimed
+     * @param _account account to compute the rewards of
+     */
     function earned(address _account) public view returns (uint) {
         return
             ((balanceOf[_account] *
@@ -103,6 +137,9 @@ contract Staking is Ownable {
             rewards[_account];
     }
 
+    /**
+     * @dev Claim earned rewards.
+     */
     function claim() external updateReward(msg.sender) {
         uint reward = rewards[msg.sender];
         require(reward > 0, "no reward to claim");
@@ -112,6 +149,10 @@ contract Staking is Ownable {
         emit RewardPaid(msg.sender, reward);
     }
 
+    /**
+     * @dev Set the staking duration
+     * @param _duration The duration in seconds
+     */
     function setRewardsDuration(uint _duration) external onlyOwner {
         require(
             finishAt < block.timestamp,
@@ -121,6 +162,10 @@ contract Staking is Ownable {
         emit RewardsDurationUpdated(_duration);
     }
 
+    /**
+     * @dev Notify the contract about the reward amount.
+     * @param _amount The amount of rewards to be distributed.
+     */
     function notifyRewardAmount(
         uint _amount
     ) external onlyOwner updateReward(address(0)) {
@@ -144,10 +189,20 @@ contract Staking is Ownable {
         emit RewardAdded(_amount);
     }
 
+    /**
+     * @dev Check if the staking target is reached
+     * @return true if the stacked amount is equal or greater than the total supply
+     */
     function isStakingFull() public view returns (bool) {
         return totalSupply >= targetSupply;
     }
 
+    /**
+     * @dev Get the minimum value between two numbers.
+     * @param x The first number.
+     * @param y The second number.
+     * @return The minimum value.
+     */
     function _min(uint x, uint y) private pure returns (uint) {
         return x <= y ? x : y;
     }

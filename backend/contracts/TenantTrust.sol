@@ -5,6 +5,10 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./Staking.sol";
 
+/**
+ * @title TenantTrust
+ * @dev Decentralized rental contract system with staking features.
+ */
 contract TenantTrust is Ownable {
     using SafeERC20 for IERC20;
 
@@ -63,6 +67,12 @@ contract TenantTrust is Ownable {
     );
     event Withdrawn(address indexed landlord, uint amount);
 
+    /**
+     * @dev Constructor for the TenantTrust contract.
+     * @param _rate Interest rate in basis points (0.01%).
+     * @param _stakingToken Address of the token to be staked.
+     * @param _rewardToken Address of the reward token.
+     */
     constructor(
         uint _rate,
         address _stakingToken,
@@ -73,6 +83,13 @@ contract TenantTrust is Ownable {
         interestBps = _rate;
     }
 
+    /**
+     * @dev Create a new rental contract.
+     * @param _tenant Address of the tenant.
+     * @param _monthlyRent Monthly rent amount.
+     * @param _rentalDeposit Rental deposit required by the landlord.
+     * @param leaseUri URI of the real-world contract.
+     */
     function createRentContract(
         address _tenant,
         uint _monthlyRent,
@@ -110,6 +127,11 @@ contract TenantTrust is Ownable {
         emit ContractCreated(_tenant, msg.sender);
     }
 
+    /**
+     * @dev Pay rent for the rental contract.
+     * @param _landlord Address of the landlord.
+     * @param _amount Amount to be paid as rent.
+     */
     function payRent(
         address _landlord,
         uint _amount
@@ -131,6 +153,12 @@ contract TenantTrust is Ownable {
         emit RentPaid(msg.sender, _landlord, netRent, rent.alreadyPaid);
     }
 
+    /**
+     * @dev Get the net rent amount after subtracting interest.
+     * @param _amount Total amount paid.
+     * @param _interestBps Interest in basis points (0.01%). (See https://en.wikipedia.org/wiki/Basis_point)
+     * @return Net rent amount after interest deduction.
+     */
     function getRawRent(
         uint _amount,
         uint _interestBps
@@ -138,6 +166,10 @@ contract TenantTrust is Ownable {
         return (_amount * 10 ** 18) / (10 ** 18 + _interestBps * 10 ** 14);
     }
 
+    /**
+     * @dev Withdraw available funds by the landlord.
+     * @param _amount Amount of funds to be withdrawn.
+     */
     function withdraw(uint _amount) external {
         require(balanceOf[msg.sender] >= _amount, "insuficient funds");
         balanceOf[msg.sender] -= _amount;
@@ -145,6 +177,11 @@ contract TenantTrust is Ownable {
         emit Withdrawn(msg.sender, _amount);
     }
 
+    /**
+     * @dev Approve the rental contract
+     * @param _tenant Address of the tenant.
+     * @param _landlord Address of the landlord.
+     */
     function approveContract(
         address _tenant,
         address _landlord
@@ -165,6 +202,10 @@ contract TenantTrust is Ownable {
         emit ContractApproved(_tenant, _landlord, approvedAddress);
     }
 
+    /**
+     * @dev Start the rental contract after approval.
+     * @param _tenant Address of the tenant.
+     */
     function startRent(address _tenant) external onlyLandlord(_tenant) {
         Rent storage rent = rents[msg.sender][_tenant];
         require(rent.stakingContract.isStakingFull(), "insuficient staking");
@@ -179,16 +220,29 @@ contract TenantTrust is Ownable {
         emit RentStarted(_tenant, msg.sender, rentRate);
     }
 
+    /**
+     * @dev Modifier to restrict a function to the landlord only.
+     * @param _tenant Address of the tenant.
+     */
     modifier onlyLandlord(address _tenant) {
         require(rents[msg.sender][_tenant].creationTime > 0, "not landlord");
         _;
     }
 
+    /**
+     * @dev Modifier to restrict a function to the tenant only.
+     * @param _landlord Address of the landlord.
+     */
     modifier onlyTenant(address _landlord) {
         require(rents[_landlord][msg.sender].creationTime > 0, "not tenant");
         _;
     }
 
+    /**
+     * @dev Modifier to check the existence of a rental contract.
+     * @param _tenant Address of the tenant.
+     * @param _landlord Address of the landlord.
+     */
     modifier rentExists(address _tenant, address _landlord) {
         require(
             rents[_landlord][_tenant].creationTime > 0,
@@ -197,11 +251,17 @@ contract TenantTrust is Ownable {
         _;
     }
 
+    /**
+     * @dev Calculate the percentage of a value using basis points.
+     * @param _amount The original value.
+     * @param _bps Basis points (0.01%).
+     * @return The calculated percentage.
+     */
     function percentage(
-        uint256 amount,
-        uint256 bps
+        uint256 _amount,
+        uint256 _bps
     ) public pure returns (uint256) {
-        require(amount * bps >= 10_000, "incorrect value");
-        return ((amount * bps) / 10_000);
+        require(_amount * _bps >= 10_000, "incorrect value");
+        return ((_amount * _bps) / 10_000);
     }
 }
