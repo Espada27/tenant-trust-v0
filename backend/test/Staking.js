@@ -155,11 +155,8 @@ describe("Staking", function () {
       async function () {
         it("should revert", async function () {
           const { staking, stakingToken, rewardToken, owner, alice } =
-            await loadFixture(initStaking);
+            await loadFixture(startStaking);
 
-          await rewardToken.transfer(staking, ethers.parseUnits("1000", 18));
-          await staking.setRewardsDuration(3600);
-          await staking.notifyRewardAmount(ethers.parseUnits("1000", 18));
           await expect(staking.withdraw(STAKING_AMOUNT)).to.be.revertedWith(
             "cannot withdraw yet"
           );

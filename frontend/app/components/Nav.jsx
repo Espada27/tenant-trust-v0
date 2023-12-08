@@ -40,7 +40,9 @@ export default function Nav() {
     }
     const getTTTBalance = async () => {
       const balance = await getBalance();
-      setTTTBalance(numberWithSpaces(balance));
+      if (balance) {
+        setTTTBalance(numberWithSpaces(balance));
+      }
     };
 
     const interval = setInterval(getTTTBalance, 5000);
@@ -65,11 +67,11 @@ export default function Nav() {
       </Box>
 
       <Spacer />
-      {isClient && isConnected ? (
+      {isClient && isConnected && data ? (
         <VStack pr={5}>
           <Text fontSize={"lg"}>{TTTBalance} TTT</Text>
           <Text fontSize={"lg"}>
-            {numberWithSpaces(data?.formatted)} {data?.symbol}
+            {numberWithSpaces(data.formatted)} {data.symbol}
           </Text>
         </VStack>
       ) : (

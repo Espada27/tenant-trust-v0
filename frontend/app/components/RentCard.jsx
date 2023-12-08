@@ -71,7 +71,6 @@ export default function RentCard({ rent }) {
   const [stakingFull, setStakingFull] = useState(false);
   const [stakingPercentage, setStakingPercentage] = useState(0);
   const [earnedAmount, setEarnedAmount] = useState(0);
-  const [earnAmountInterval, setEarnedAmountInterval] = useState();
   const [userStaked, setUserStaked] = useState();
   const [rentInput, setRentInput] = useState();
   const [totalPaidRent, setTotalPaidRent] = useState();
@@ -79,7 +78,9 @@ export default function RentCard({ rent }) {
 
   //Demo only
   const randomImageSrc = [img1.src, img2.src, img3.src, img4.src][
-    rent.creationTime % 4
+    (Number(rent.landlordAddress.match(/[0-9]/g).slice(-1)[0] + 1) %
+      Number(rent.tenantAddress.match(/[0-9]/g).slice(-1)[0] + 1)) %
+      4
   ];
 
   useEffect(() => {
@@ -102,20 +103,20 @@ export default function RentCard({ rent }) {
     getStakingFull();
     getCurrentDeposit();
 
+    let interval;
+
     const initInterval = async () => {
       const stakedAmount = await userStakedAmount();
       setUserStaked(stakedAmount);
       if (!stakedAmount) {
         return;
       }
-
-      if (rent.startTime + rent.duration < Date.now()) {
-        const intervalId = setInterval(async () => {
+      setEarnedAmount(await earned());
+      if (rent.startTime + rent.duration > Date.now()) {
+        interval = setInterval(async () => {
           let newValue = await earned();
-          console.log("loop, earned amount = ", rent);
           setEarnedAmount(newValue);
         }, 1000);
-        setEarnedAmountInterval(intervalId);
       }
     };
 
@@ -130,8 +131,7 @@ export default function RentCard({ rent }) {
 
     initLandlordBalance();
     return () => {
-      clearInterval(earnAmountInterval);
-      setEarnedAmountInterval(null);
+      clearInterval(interval);
     };
   }, []);
 
@@ -161,7 +161,6 @@ export default function RentCard({ rent }) {
 
   const handleWithdraw = async () => {
     try {
-      console.log("Amount =", inputAmount);
       await withdraw(inputAmount);
       updateCurrentStakingAmount(-inputAmount);
     } catch (error) {
@@ -205,6 +204,8 @@ export default function RentCard({ rent }) {
       }
       console.log("Paying the rent", rentInput);
       await payRent(rent, rentInput);
+
+      setTotalPaidRent((prev) => prev + rentInput);
     } catch (error) {
       console.log("Error while paying the rent", error);
     }
@@ -433,7 +434,7 @@ export default function RentCard({ rent }) {
                   w={"15%"}
                   min={0}
                   value={rentInput}
-                  onChange={(value) => setRentInput(value)}
+                  onChange={(value) => setRentInput(Number(value))}
                 >
                   <NumberInputField />
                   <NumberInputStepper>

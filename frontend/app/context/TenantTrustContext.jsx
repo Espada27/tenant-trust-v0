@@ -1,7 +1,11 @@
 "use client";
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { useAccount, useContractEvent, usePublicClient } from "wagmi";
-import { TENANT_TRUST_ABI, TENANT_TRUST_ADDRESS } from "../constants/constant";
+import {
+  TENANT_TRUST_ABI,
+  TENANT_TRUST_ADDRESS,
+  TENANT_TRUST_DEPLOYMENT_BLOCK,
+} from "../constants/constant";
 import { parseAbiItem } from "viem";
 import useTenantTrust from "../hooks/useTenantTrust";
 
@@ -25,7 +29,7 @@ export const DataProvider = ({ children }) => {
       event: parseAbiItem(
         "event ContractCreated(address indexed tenant, address indexed landlord)"
       ),
-      fromBlock: 0n,
+      fromBlock: TENANT_TRUST_DEPLOYMENT_BLOCK,
     });
 
     const landlordRents = [];

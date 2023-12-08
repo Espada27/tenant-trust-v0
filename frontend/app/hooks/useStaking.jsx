@@ -55,8 +55,8 @@ const useStaking = (stakingAddress) => {
       await waitForTransaction({ hash });
       console.log("Successfully staked");
       successToast("Dépot réussi !", `Vous avez déposé ${stakingAmount} USDC`);
-      errorToast("Erreur lors du dépot");
     } catch (error) {
+      errorToast("Erreur lors du dépot");
       console.error("Error while staking:", error);
       throw error;
     }

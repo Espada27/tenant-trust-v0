@@ -22,7 +22,6 @@ const prepareRentDataWrite = (rent) => {
 };
 
 const rentArrayToObject = (rent, landlordAddress, tenantAddress) => {
-  console.log("Already paid = ", rent[5]);
   return {
     stakingContract: rent[0],
     startTime: Number(rent[1]) * 1000,
@@ -127,6 +126,7 @@ const useTenantTrust = () => {
     } catch (error) {
       errorToast("Erreur", "Erreur lors du paiement du loyer");
       console.error("Error while creating a rent contract:", error);
+      throw error;
     }
   };
 

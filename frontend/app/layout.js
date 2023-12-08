@@ -5,27 +5,27 @@ import { getDefaultWallets, RainbowKitProvider } from "@rainbow-me/rainbowkit";
 import { configureChains, createConfig, WagmiConfig } from "wagmi";
 import { sepolia, hardhat } from "wagmi/chains";
 import { publicProvider } from "wagmi/providers/public";
-// import { alchemyProvider } from 'wagmi/providers/alchemy'
+import { alchemyProvider } from "wagmi/providers/alchemy";
 import { DataProvider } from "./context/TenantTrustContext";
 
-// const ALCHEMY_KEY = process.env.NEXT_PUBLIC_ALCHEMY_KEY
+const ALCHEMY_KEY = process.env.NEXT_PUBLIC_ALCHEMY_KEY;
 
 const { chains, publicClient } = configureChains(
   [hardhat, sepolia],
   [
-    //alchemyProvider({ apiKey: process.env.ALCHEMY_ID }),
+    //alchemyProvider({ apiKey: ALCHEMY_KEY }),
     publicProvider(),
   ]
 );
 
 const { connectors } = getDefaultWallets({
-  appName: "My RainbowKit App",
+  appName: "TenantTrust",
   projectId: process.env.NEXT_PUBLIC_PROJECT_ID,
   chains,
 });
 
 const wagmiConfig = createConfig({
-  autoConnect: true,
+  autoConnect: false,
   connectors,
   publicClient,
 });

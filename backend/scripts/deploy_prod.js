@@ -4,22 +4,27 @@
 // You can also run a script with `npx hardhat run <script>`. If you do that, Hardhat
 // will compile your contracts, add the Hardhat Runtime Environment's members to the
 // global scope, and execute the script.
-const { time } = require("@nomicfoundation/hardhat-toolbox/network-helpers");
 const hre = require("hardhat");
 
 const DEFAULT_BPS = 500n;
 
 async function main() {
+  console.log("[Deployment] Start deploying contracts");
+
   const tenantTrustToken = await hre.ethers.deployContract("TenantTrustToken");
 
   await tenantTrustToken.waitForDeployment();
 
-  console.log(`TenantTrustToken deployed to ${tenantTrustToken.target}`);
+  console.log(
+    `[Deployment] TenantTrustToken (TTT) deployed to ${tenantTrustToken.target}`
+  );
 
   const stakingToken = await hre.ethers.deployContract("StakingToken");
   await stakingToken.waitForDeployment();
 
-  console.log(`StakingToken deployed to ${stakingToken.target}`);
+  console.log(
+    `[Deployment] StakingToken (Mock USDC) deployed to ${stakingToken.target}`
+  );
 
   const tenantTrust = await hre.ethers.deployContract("TenantTrust", [
     DEFAULT_BPS,
@@ -28,52 +33,71 @@ async function main() {
   ]);
   await tenantTrust.waitForDeployment();
 
-  console.log(`TenantTrust deployed to ${tenantTrust.target}`);
-  await seed(tenantTrustToken, stakingToken, tenantTrust);
+  console.log(`[Deployment] TenantTrust deployed to ${tenantTrust.target}`);
+  console.log("[Deployment] End deploying contracts");
 }
 
 const seed = async (tenantTrustToken, stakingToken, tenantTrust) => {
+  console.log("[Seed] Start seed contracts");
   const monthlyRent = 500n * 10n ** 18n;
   const rentalDeposit = monthlyRent * 12n;
   const leaseUrl = "http://myServer.com/file";
   const [owner, alice, bob] = await ethers.getSigners();
 
+  console.log("[Seed] Creating the rent contract");
   await tenantTrust.createRentContract(
     alice,
     monthlyRent,
     rentalDeposit,
     leaseUrl
   );
+  console.log("[Seed] Fetching it from the blockchain");
 
   const rent = await tenantTrust.rents(owner, alice);
 
+  console.log("[Seed] Seeding Alice and Bob");
+
   //Seed other accounts
-  await stakingToken.transfer(alice, 1_000_000_000n * 10n ** 18n);
-  await stakingToken.transfer(bob, 1_000_000_000n * 10n ** 18n);
+  const tx1 = await stakingToken.transfer(alice, 1_000_000_000n * 10n ** 18n);
+  await tx1.wait();
+
+  const tx2 = await stakingToken.transfer(bob, 1_000_000_000n * 10n ** 18n);
+  await tx2.wait();
+
+  console.log("[Seed] Fetching the staking contract");
 
   const stakingContract = await ethers.getContractAt(
     "Staking",
     rent.stakingContract
   );
-  console.log("Approving the deposit");
+  console.log("[Seed] Approving the deposit");
 
-  await stakingToken.approve(stakingContract, rentalDeposit);
-  await stakingContract.stake(rentalDeposit);
+  const tx3 = await stakingToken.approve(stakingContract, rentalDeposit);
+  await tx3.wait();
+  const tx4 = await stakingContract.stake(rentalDeposit);
+  await tx4.wait();
 
-  console.log("Approving the contract");
+  console.log("[Seed] Approving the contract as landlord");
   //approuver le contrat
-  await tenantTrust.approveContract(alice, owner);
-  await tenantTrust.connect(alice).approveContract(alice, owner);
+  const tx5 = await tenantTrust.approveContract(alice, owner);
+  await tx5.wait();
+  console.log("[Seed] Approving the contract as tenant");
+  const tx6 = await tenantTrust.connect(alice).approveContract(alice, owner);
+  await tx6.wait();
 
-  console.log("Démarre le contrat");
-  await tenantTrustToken.transfer(stakingContract, 1000n * 10n ** 18n);
+  console.log("[Seed] Envoi des rewards sur le contrat de staking");
+
+  const tx7 = await tenantTrustToken.transfer(
+    stakingContract,
+    1000n * 10n ** 18n
+  );
+  await tx7.wait();
+  console.log("[Seed] Démarre le contrat");
 
   //Démarrer le contrat
-  await tenantTrust.startRent(alice);
-
-  //earned info
-  //console.log("earned after 180days= ", await stakingContract.earned(owner));
-  mockTime();
+  const tx8 = await tenantTrust.startRent(alice);
+  await tx8.wait();
+  console.log("[Seed] End seed contracts");
 };
 
 const mockTime = async () => {
