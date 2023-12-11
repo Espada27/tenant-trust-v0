@@ -16,7 +16,7 @@ Tenant Trust est une application de gestion locative basée sur la blockchain et
 
 # 🔗Lien Utiles
 
-Vidéo de démonstration: Mettre le lien Loom
+✅ Vidéo de démonstration: https://www.loom.com/share/f233ac82a0234caba3bc27d8fd3bf892?sid=5693e186-69c3-46f8-af85-c15986ff112e
 
 ✅ Déployé sur Vercel: https://tenant-trust.vercel.app/
 
